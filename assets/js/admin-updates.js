@@ -34,10 +34,14 @@
 				t.classList.add('active');
 				t.style.borderBottomColor = '#2271b1';
 				t.style.color = '';
+				t.setAttribute('aria-selected', 'true');
+				t.setAttribute('tabindex', '0');
 			} else {
 				t.classList.remove('active');
 				t.style.borderBottomColor = 'transparent';
 				t.style.color = '#666';
+				t.setAttribute('aria-selected', 'false');
+				t.setAttribute('tabindex', '-1');
 			}
 		});
 
@@ -45,6 +49,48 @@
 		container.querySelectorAll('[data-panel]').forEach(function(p) {
 			p.style.display = p.getAttribute('data-panel') === target ? '' : 'none';
 		});
+	});
+
+	// -------------------------------------------------------------------------
+	// Tab keyboard navigation (WAI-ARIA pattern)
+	// -------------------------------------------------------------------------
+
+	document.addEventListener('keydown', function(e) {
+		var tab = e.target.closest('[data-tab]');
+		if (!tab) {
+			return;
+		}
+
+		var container = tab.closest('.bricks-mcp-tabs');
+		if (!container) {
+			return;
+		}
+
+		var tabs = Array.from(container.querySelectorAll('[data-tab]'));
+		var currentIndex = tabs.indexOf(tab);
+		var targetIndex = -1;
+
+		switch (e.key) {
+			case 'ArrowRight':
+				targetIndex = (currentIndex + 1) % tabs.length;
+				break;
+			case 'ArrowLeft':
+				targetIndex = (currentIndex - 1 + tabs.length) % tabs.length;
+				break;
+			case 'Home':
+				targetIndex = 0;
+				break;
+			case 'End':
+				targetIndex = tabs.length - 1;
+				break;
+			default:
+				return;
+		}
+
+		e.preventDefault();
+		var targetTab = tabs[targetIndex];
+		targetTab.focus();
+		targetTab.click();
 	});
 
 	// -------------------------------------------------------------------------
