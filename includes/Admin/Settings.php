@@ -194,8 +194,8 @@ final class Settings {
 			<h1><?php echo esc_html( get_admin_page_title() ); ?></h1>
 			<?php settings_errors(); ?>
 
-			<div class="bricks-mcp-info" style="background: #fff; padding: 15px; margin: 20px 0; border-left: 4px solid #2271b1;">
-				<h3 style="margin-top: 0;"><?php esc_html_e( 'MCP Server Endpoints', 'bricks-mcp' ); ?></h3>
+			<div class="bricks-mcp-info">
+				<h3><?php esc_html_e( 'MCP Server Endpoints', 'bricks-mcp' ); ?></h3>
 				<p>
 					<strong><?php esc_html_e( 'MCP Endpoint:', 'bricks-mcp' ); ?></strong>
 					<code><?php echo esc_html( rest_url( 'bricks-mcp/v1/mcp' ) ); ?></code>
@@ -299,9 +299,9 @@ final class Settings {
 			<input type="checkbox" id="bricks-mcp-dangerous-actions" name="<?php echo esc_attr( self::OPTION_NAME ); ?>[dangerous_actions]" value="1" <?php checked( ! empty( $settings['dangerous_actions'] ) ); ?>>
 			<?php esc_html_e( 'Enable dangerous actions mode', 'bricks-mcp' ); ?>
 		</label>
-		<div style="margin-top: 10px; padding: 10px 12px; border-left: 4px solid #d63638; background: #fcf0f0;">
+		<div class="bricks-mcp-danger-notice">
 			<strong><?php esc_html_e( 'Warning: This enables unrestricted write access', 'bricks-mcp' ); ?></strong>
-			<p style="margin: 6px 0 0;">
+			<p>
 				<?php esc_html_e( 'When enabled, AI tools can: write to global Bricks settings, execute custom JavaScript on pages, and modify code execution settings. Only enable this on development sites or when running trusted AI agent teams. API keys and secrets remain masked regardless of this setting.', 'bricks-mcp' ); ?>
 			</p>
 		</div>
@@ -336,6 +336,13 @@ final class Settings {
 		if ( 'bricks_page_bricks-mcp' !== $hook ) {
 			return;
 		}
+
+		wp_enqueue_style(
+			'bricks-mcp-admin-settings',
+			BRICKS_MCP_PLUGIN_URL . 'assets/css/admin-settings.css',
+			[],
+			BRICKS_MCP_VERSION
+		);
 
 		wp_enqueue_script(
 			'bricks-mcp-admin-updates',
@@ -378,15 +385,14 @@ final class Settings {
 		$has_update      = ! empty( $update_data['version'] )
 			&& version_compare( $current_version, $update_data['version'], '<' );
 
-		$border_color = $has_update ? '#dba617' : '#2271b1';
 		?>
-		<div class="bricks-mcp-version-card" style="background:#fff;padding:15px 20px;margin:20px 0;border-left:4px solid <?php echo esc_attr( $border_color ); ?>;">
+		<div class="bricks-mcp-version-card<?php echo $has_update ? ' bricks-mcp-version-card--has-update' : ''; ?>">
 			<h2><?php esc_html_e( 'Version', 'bricks-mcp' ); ?></h2>
 			<p id="bricks-mcp-version-text">
 				<strong>v<?php echo esc_html( $current_version ); ?></strong>
 				<?php if ( $has_update ) : ?>
 					&mdash;
-					<span style="color:#dba617;font-weight:600;">
+					<span class="bricks-mcp-update-available">
 						v<?php echo esc_html( $update_data['version'] ); ?>
 						<?php esc_html_e( 'available', 'bricks-mcp' ); ?>
 					</span>
@@ -394,14 +400,14 @@ final class Settings {
 						<?php esc_html_e( 'Update', 'bricks-mcp' ); ?>
 					</a>
 				<?php else : ?>
-					&mdash; <span style="color:#00a32a;"><?php esc_html_e( 'up to date', 'bricks-mcp' ); ?></span>
+					&mdash; <span class="bricks-mcp-up-to-date"><?php esc_html_e( 'up to date', 'bricks-mcp' ); ?></span>
 				<?php endif; ?>
 			</p>
 			<p>
 				<button type="button" id="bricks-mcp-check-update-btn" class="button">
 					<?php esc_html_e( 'Check Now', 'bricks-mcp' ); ?>
 				</button>
-				<span id="bricks-mcp-check-update-spinner" class="spinner" style="float:none;"></span>
+				<span id="bricks-mcp-check-update-spinner" class="spinner"></span>
 			</p>
 		</div>
 		<?php
@@ -459,77 +465,77 @@ final class Settings {
 		);
 
 		?>
-		<div class="bricks-mcp-config-section" style="background:#fff;padding:15px 20px;margin:20px 0;border-left:4px solid #2271b1;">
+		<div class="bricks-mcp-config-section">
 			<h2><?php esc_html_e( 'MCP Configuration', 'bricks-mcp' ); ?></h2>
 			<p class="description"><?php esc_html_e( 'Add the following configuration to your AI tool to connect to this MCP server.', 'bricks-mcp' ); ?></p>
 
 			<!-- Generate Setup Command -->
-			<div style="margin:15px 0 20px;padding:15px;background:#f6f7f7;border:1px solid #ddd;border-radius:4px;">
-				<h3 style="margin-top:0;"><?php esc_html_e( 'Quick Setup', 'bricks-mcp' ); ?></h3>
+			<div class="bricks-mcp-quick-setup">
+				<h3><?php esc_html_e( 'Quick Setup', 'bricks-mcp' ); ?></h3>
 				<p class="description"><?php esc_html_e( 'Generate an Application Password and get a ready-to-paste setup command.', 'bricks-mcp' ); ?></p>
-				<p style="margin-top:10px;">
+				<p class="bricks-mcp-generate-btn-wrap">
 					<button type="button" id="bricks-mcp-generate-btn" class="button button-primary">
 						<?php esc_html_e( 'Generate Setup Command', 'bricks-mcp' ); ?>
 					</button>
-					<span id="bricks-mcp-generate-spinner" class="spinner" style="float:none;"></span>
+					<span id="bricks-mcp-generate-spinner" class="spinner"></span>
 				</p>
-				<div id="bricks-mcp-generate-error" style="display:none;margin-top:10px;"></div>
+				<div id="bricks-mcp-generate-error" class="bricks-mcp-generate-error" style="display:none;"></div>
 
-				<div id="bricks-mcp-generated-result" style="display:none;margin-top:15px;">
-					<div style="padding:10px 12px;border-left:4px solid #dba617;background:#fcf0e8;margin-bottom:15px;">
+				<div id="bricks-mcp-generated-result" class="bricks-mcp-generated-result" style="display:none;">
+					<div class="bricks-mcp-important-notice">
 						<strong><?php esc_html_e( 'Important:', 'bricks-mcp' ); ?></strong>
 						<?php esc_html_e( 'This password is shown once. Copy your command now -- it cannot be retrieved later.', 'bricks-mcp' ); ?>
 					</div>
 
-					<h4 style="margin:0 0 8px;"><?php esc_html_e( 'Claude Code (one-liner):', 'bricks-mcp' ); ?></h4>
-					<div style="position:relative;">
-						<pre style="background:#1e1e1e;color:#d4d4d4;padding:15px;border-radius:4px;overflow:auto;margin:0;white-space:pre-wrap;word-break:break-all;"><code id="bricks-mcp-generated-command"></code></pre>
-						<button type="button" class="button bricks-mcp-copy-btn" data-target="bricks-mcp-generated-command" style="position:absolute;top:8px;right:8px;">
+					<h4><?php esc_html_e( 'Claude Code (one-liner):', 'bricks-mcp' ); ?></h4>
+					<div class="bricks-mcp-code-wrap bricks-mcp-code-wrap--breakall">
+						<pre><code id="bricks-mcp-generated-command"></code></pre>
+						<button type="button" class="button bricks-mcp-copy-btn" data-target="bricks-mcp-generated-command">
 							<?php esc_html_e( 'Copy to Clipboard', 'bricks-mcp' ); ?>
 						</button>
 					</div>
 
-					<hr style="margin:15px 0;">
+					<hr>
 
-					<h4 style="margin:0 0 8px;"><?php esc_html_e( 'Claude Code (JSON config):', 'bricks-mcp' ); ?></h4>
-					<div style="position:relative;">
-						<pre style="background:#1e1e1e;color:#d4d4d4;padding:15px;border-radius:4px;overflow:auto;margin:0;"><code id="bricks-mcp-generated-claude-config"></code></pre>
-						<button type="button" class="button bricks-mcp-copy-btn" data-target="bricks-mcp-generated-claude-config" style="position:absolute;top:8px;right:8px;">
+					<h4><?php esc_html_e( 'Claude Code (JSON config):', 'bricks-mcp' ); ?></h4>
+					<div class="bricks-mcp-code-wrap">
+						<pre><code id="bricks-mcp-generated-claude-config"></code></pre>
+						<button type="button" class="button bricks-mcp-copy-btn" data-target="bricks-mcp-generated-claude-config">
 							<?php esc_html_e( 'Copy to Clipboard', 'bricks-mcp' ); ?>
 						</button>
 					</div>
 
-					<h4 style="margin:15px 0 8px;"><?php esc_html_e( 'Gemini (JSON config):', 'bricks-mcp' ); ?></h4>
-					<div style="position:relative;">
-						<pre style="background:#1e1e1e;color:#d4d4d4;padding:15px;border-radius:4px;overflow:auto;margin:0;"><code id="bricks-mcp-generated-gemini-config"></code></pre>
-						<button type="button" class="button bricks-mcp-copy-btn" data-target="bricks-mcp-generated-gemini-config" style="position:absolute;top:8px;right:8px;">
+					<h4><?php esc_html_e( 'Gemini (JSON config):', 'bricks-mcp' ); ?></h4>
+					<div class="bricks-mcp-code-wrap">
+						<pre><code id="bricks-mcp-generated-gemini-config"></code></pre>
+						<button type="button" class="button bricks-mcp-copy-btn" data-target="bricks-mcp-generated-gemini-config">
 							<?php esc_html_e( 'Copy to Clipboard', 'bricks-mcp' ); ?>
 						</button>
 					</div>
 				</div>
 			</div>
 
-			<h3 style="margin-top:0;"><?php esc_html_e( 'Manual Setup', 'bricks-mcp' ); ?></h3>
+			<h3><?php esc_html_e( 'Manual Setup', 'bricks-mcp' ); ?></h3>
 
-			<div class="bricks-mcp-tabs" style="margin-top:15px;">
-				<div role="tablist" style="border-bottom:2px solid #ddd;margin-bottom:15px;">
-					<button type="button" role="tab" id="bricks-mcp-tab-claude" data-tab="claude" aria-selected="true" aria-controls="bricks-mcp-panel-claude" tabindex="0" class="active" style="background:none;border:none;padding:8px 16px;cursor:pointer;font-size:14px;font-weight:600;border-bottom:2px solid #2271b1;margin-bottom:-2px;">
+			<div class="bricks-mcp-tabs bricks-mcp-tabs-wrap">
+				<div role="tablist">
+					<button type="button" role="tab" id="bricks-mcp-tab-claude" data-tab="claude" aria-selected="true" aria-controls="bricks-mcp-panel-claude" tabindex="0" class="active">
 						<?php esc_html_e( 'Claude Code', 'bricks-mcp' ); ?>
 					</button>
-					<button type="button" role="tab" id="bricks-mcp-tab-gemini" data-tab="gemini" aria-selected="false" aria-controls="bricks-mcp-panel-gemini" tabindex="-1" style="background:none;border:none;padding:8px 16px;cursor:pointer;font-size:14px;color:#666;border-bottom:2px solid transparent;margin-bottom:-2px;">
+					<button type="button" role="tab" id="bricks-mcp-tab-gemini" data-tab="gemini" aria-selected="false" aria-controls="bricks-mcp-panel-gemini" tabindex="-1">
 						<?php esc_html_e( 'Gemini', 'bricks-mcp' ); ?>
 					</button>
 				</div>
 
 				<!-- Claude Code Panel -->
 				<div role="tabpanel" id="bricks-mcp-panel-claude" aria-labelledby="bricks-mcp-tab-claude" data-panel="claude">
-					<div style="position:relative;">
-						<pre style="background:#1e1e1e;color:#d4d4d4;padding:15px;border-radius:4px;overflow:auto;margin:0;"><code id="bricks-mcp-claude-config"><?php echo esc_html( $claude_config ); ?></code></pre>
-						<button type="button" class="button bricks-mcp-copy-btn" data-target="bricks-mcp-claude-config" style="position:absolute;top:8px;right:8px;">
+					<div class="bricks-mcp-code-wrap">
+						<pre><code id="bricks-mcp-claude-config"><?php echo esc_html( $claude_config ); ?></code></pre>
+						<button type="button" class="button bricks-mcp-copy-btn" data-target="bricks-mcp-claude-config">
 							<?php esc_html_e( 'Copy to Clipboard', 'bricks-mcp' ); ?>
 						</button>
 					</div>
-					<p class="description" style="margin-top:10px;">
+					<p class="description bricks-mcp-tab-description">
 						<?php esc_html_e( 'Add this to your .mcp.json file, or use:', 'bricks-mcp' ); ?>
 						<code>claude mcp add bricks-mcp <?php echo esc_html( $mcp_url ); ?> --transport http --header "Authorization: Basic ..."</code>
 					</p>
@@ -548,13 +554,13 @@ final class Settings {
 
 				<!-- Gemini Panel -->
 				<div role="tabpanel" id="bricks-mcp-panel-gemini" aria-labelledby="bricks-mcp-tab-gemini" data-panel="gemini" style="display:none;">
-					<div style="position:relative;">
-						<pre style="background:#1e1e1e;color:#d4d4d4;padding:15px;border-radius:4px;overflow:auto;margin:0;"><code id="bricks-mcp-gemini-config"><?php echo esc_html( $gemini_config ); ?></code></pre>
-						<button type="button" class="button bricks-mcp-copy-btn" data-target="bricks-mcp-gemini-config" style="position:absolute;top:8px;right:8px;">
+					<div class="bricks-mcp-code-wrap">
+						<pre><code id="bricks-mcp-gemini-config"><?php echo esc_html( $gemini_config ); ?></code></pre>
+						<button type="button" class="button bricks-mcp-copy-btn" data-target="bricks-mcp-gemini-config">
 							<?php esc_html_e( 'Copy to Clipboard', 'bricks-mcp' ); ?>
 						</button>
 					</div>
-					<p class="description" style="margin-top:10px;">
+					<p class="description bricks-mcp-tab-description">
 						<?php esc_html_e( 'Add this to your ~/.gemini/settings.json file.', 'bricks-mcp' ); ?>
 					</p>
 					<p class="description">
@@ -572,23 +578,23 @@ final class Settings {
 			</div>
 
 			<!-- Test Connection -->
-			<div style="margin-top:20px;padding-top:15px;border-top:1px solid #ddd;">
-				<h3 style="margin-top:0;"><?php esc_html_e( 'Test Connection', 'bricks-mcp' ); ?></h3>
+			<div class="bricks-mcp-test-connection">
+				<h3><?php esc_html_e( 'Test Connection', 'bricks-mcp' ); ?></h3>
 				<p>
 					<label for="bricks-mcp-test-username"><?php esc_html_e( 'Username:', 'bricks-mcp' ); ?></label><br>
-					<input type="text" id="bricks-mcp-test-username" value="<?php echo esc_attr( $username ); ?>" readonly style="width:300px;background:#f0f0f0;">
+					<input type="text" id="bricks-mcp-test-username" value="<?php echo esc_attr( $username ); ?>" readonly>
 				</p>
 				<p>
 					<label for="bricks-mcp-test-app-password"><?php esc_html_e( 'Application Password:', 'bricks-mcp' ); ?></label><br>
-					<input type="password" id="bricks-mcp-test-app-password" placeholder="<?php esc_attr_e( 'Enter your Application Password', 'bricks-mcp' ); ?>" style="width:300px;">
+					<input type="password" id="bricks-mcp-test-app-password" placeholder="<?php esc_attr_e( 'Enter your Application Password', 'bricks-mcp' ); ?>">
 				</p>
 				<p>
 					<button type="button" id="bricks-mcp-test-connection-btn" class="button">
 						<?php esc_html_e( 'Test Connection', 'bricks-mcp' ); ?>
 					</button>
-					<span id="bricks-mcp-test-spinner" class="spinner" style="float:none;"></span>
+					<span id="bricks-mcp-test-spinner" class="spinner"></span>
 				</p>
-				<div id="bricks-mcp-test-result" style="margin-top:10px;"></div>
+				<div id="bricks-mcp-test-result" class="bricks-mcp-test-result"></div>
 			</div>
 		</div>
 		<?php
