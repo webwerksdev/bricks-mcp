@@ -35,7 +35,7 @@ Every Bricks page follows: **section > container > content elements**.
 
 - `section` — Full-width row. Top-level wrapper.
 - `container` — Layout box inside section. Controls direction, alignment, gap.
-- Content elements: `heading`, `text-basic`, `button`, `icon`, `image`, `video`, `divider`, etc.
+- Content elements: `heading`, `text-basic`, `button`, `icon`, `image`, `video`, `divider`, `toggle-mode`, etc.
 
 Nest containers for multi-column layouts:
 
@@ -59,9 +59,13 @@ section
 | `text` | heading, text-basic, button | HTML or plain text |
 | `tag` | heading | `h1`–`h6`, `div`, `span` |
 | `link` | button, heading | `{"url": "...", "type": "external"}` |
-| `icon` | icon | `{"library": "Ionicons", "icon": "ion-ios-rocket"}` |
-| `iconColor` | icon | `{"hex": "#3B82F6"}` |
-| `iconSize` | icon | `"48px"` |
+| `icon` | icon, toggle-mode | `{"library": "Ionicons", "icon": "ion-ios-rocket"}` — For toggle-mode: light mode icon (default: built-in sun SVG) |
+| `iconColor` | icon, toggle-mode | `{"hex": "#3B82F6"}` — For toggle-mode: light mode icon color |
+| `iconSize` | icon, toggle-mode | `"48px"` — For toggle-mode: light mode icon size |
+| `iconDark` | toggle-mode | `{"library": "Ionicons", "icon": "ion-ios-moon"}` — Dark mode icon (default: built-in moon SVG) |
+| `iconDarkColor` | toggle-mode | `{"hex": "#818CF8"}` — Dark mode icon color |
+| `iconDarkSize` | toggle-mode | `"24px"` — Dark mode icon size |
+| `ariaLabel` | toggle-mode | `"Toggle mode"` — Accessibility label (default: `"Toggle mode"`) |
 | `loadMoreInitial` | image-gallery | Number of images shown initially (enables load more) |
 | `loadMoreStep` | image-gallery | Images per load (`0` = all remaining) |
 | `loadMoreInfiniteScroll` | image-gallery | `true` to auto-load on scroll |
@@ -405,6 +409,42 @@ The `%brx%` placeholder is replaced by Bricks with an object: `{source: sourceEl
 - Use `"In"` types for entrance animations, `"Out"` types for exit or click-triggered hiding
 - For GSAP: always wrap init code in `DOMContentLoaded`, check `typeof gsap !== "undefined"` before use
 - Each interaction `id` must be unique across the page -- 6-char lowercase alphanumeric
+
+### Toggle - Mode (Light/Dark) (Bricks 2.3+)
+
+The `toggle-mode` element renders a button that toggles between light and dark mode. It uses the site's color manager dark mode colors. Default icons are sun (light) and moon (dark) SVGs built into Bricks.
+
+Minimal usage (defaults to built-in sun/moon SVGs):
+
+```json
+{
+  "name": "toggle-mode",
+  "settings": {
+    "ariaLabel": "Switch color mode"
+  }
+}
+```
+
+With custom icons and colors:
+
+```json
+{
+  "name": "toggle-mode",
+  "settings": {
+    "icon": {"library": "Ionicons", "icon": "ion-ios-sunny"},
+    "iconColor": {"hex": "#F59E0B"},
+    "iconSize": "28px",
+    "iconDark": {"library": "Ionicons", "icon": "ion-ios-moon"},
+    "iconDarkColor": {"hex": "#818CF8"},
+    "iconDarkSize": "28px",
+    "ariaLabel": "Switch between light and dark mode"
+  }
+}
+```
+
+**Prerequisites:** At least one color in the Bricks color manager must have a dark mode variant configured. Without dark mode colors, the toggle renders but has no effect.
+
+**CSS selectors for styling:** `.toggle.light > *` (light mode icon), `.toggle.dark > *` (dark mode icon).
 
 ## Dynamic Data & Query Loops
 
@@ -1518,3 +1558,4 @@ Export is read-only (no license). Import requires a license (write operation).
 13. **Properties without `connections` do nothing** — defining properties on a component without setting the `connections` map means instance property values are stored but never applied to any element setting.
 14. **Slot content lives in the page array, not the component definition** — slot filler elements are stored as regular elements in the page's flat array with `parent = instance_id`. The component definition only contains the slot placeholder element (`name: "slot"`).
 15. **Popup triggers are NOT popup settings** — triggers use `_interactions` on elements (click, scroll, exit intent). `_bricks_template_settings` only stores display behavior (close, backdrop, sizing, limits). These are separate systems managed by different tools.
+16. **`toggle-mode` needs dark mode colors** — The toggle element only works if dark mode variants are configured in the Bricks color manager. Without them, the button renders but does nothing.
