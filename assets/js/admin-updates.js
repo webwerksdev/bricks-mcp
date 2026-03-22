@@ -260,6 +260,97 @@
 	}
 
 	// -------------------------------------------------------------------------
+	// Generate Setup Command button
+	// -------------------------------------------------------------------------
+
+	function initGenerateCommand() {
+		var btn = document.getElementById('bricks-mcp-generate-btn');
+		var spinner = document.getElementById('bricks-mcp-generate-spinner');
+		var resultDiv = document.getElementById('bricks-mcp-generated-result');
+		var errorDiv = document.getElementById('bricks-mcp-generate-error');
+		var commandEl = document.getElementById('bricks-mcp-generated-command');
+		var claudeConfigEl = document.getElementById('bricks-mcp-generated-claude-config');
+		var geminiConfigEl = document.getElementById('bricks-mcp-generated-gemini-config');
+
+		if (!btn) {
+			return;
+		}
+
+		btn.addEventListener('click', function() {
+			btn.disabled = true;
+			if (spinner) {
+				spinner.classList.add('is-active');
+			}
+			if (errorDiv) {
+				errorDiv.style.display = 'none';
+				errorDiv.innerHTML = '';
+			}
+
+			var formData = new FormData();
+			formData.append('action', 'bricks_mcp_generate_app_password');
+			formData.append('nonce', bricksMcpUpdates.nonce);
+
+			fetch(bricksMcpUpdates.ajaxUrl, {
+				method: 'POST',
+				body: formData
+			})
+			.then(function(response) {
+				return response.json();
+			})
+			.then(function(data) {
+				if (data.success && data.data) {
+					// Populate the generated output fields.
+					if (commandEl) {
+						commandEl.textContent = data.data.claude_command;
+					}
+					if (claudeConfigEl) {
+						claudeConfigEl.textContent = data.data.claude_config;
+					}
+					if (geminiConfigEl) {
+						geminiConfigEl.textContent = data.data.gemini_config;
+					}
+
+					// Show the result container.
+					if (resultDiv) {
+						resultDiv.style.display = '';
+						resultDiv.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+					}
+
+					// Auto-fill the test connection password field.
+					var passwordInput = document.getElementById('bricks-mcp-test-app-password');
+					if (passwordInput && data.data.password) {
+						passwordInput.value = data.data.password;
+					}
+
+					// Disable the button permanently (password is one-time).
+					btn.textContent = 'Generated';
+					btn.disabled = true;
+					btn.classList.remove('button-primary');
+				} else {
+					var message = (data.data && data.data.message) ? data.data.message : 'Failed to generate Application Password.';
+					if (errorDiv) {
+						errorDiv.innerHTML = '<span style="color:#d63638;">' + escapeHtml(message) + '</span>';
+						errorDiv.style.display = '';
+					}
+					btn.disabled = false;
+				}
+			})
+			.catch(function() {
+				if (errorDiv) {
+					errorDiv.innerHTML = '<span style="color:#d63638;">Network error. Please try again.</span>';
+					errorDiv.style.display = '';
+				}
+				btn.disabled = false;
+			})
+			.finally(function() {
+				if (spinner) {
+					spinner.classList.remove('is-active');
+				}
+			});
+		});
+	}
+
+	// -------------------------------------------------------------------------
 	// Utility functions
 	// -------------------------------------------------------------------------
 
@@ -322,6 +413,7 @@
 	function init() {
 		initCheckNow();
 		initTestConnection();
+		initGenerateCommand();
 	}
 
 	if (document.readyState === 'loading') {
