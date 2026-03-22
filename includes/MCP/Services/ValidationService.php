@@ -273,6 +273,63 @@ class ValidationService {
 	}
 
 	/**
+	 * Validate tool call arguments against a tool's inputSchema.
+	 *
+	 * Validates arbitrary argument data against a JSON Schema using Opis JSON Schema,
+	 * returning true on success or a WP_Error with field-level details on failure.
+	 *
+	 * @param array<string, mixed> $arguments    Tool call arguments to validate.
+	 * @param array<string, mixed> $input_schema The tool's registered inputSchema.
+	 * @param string               $tool_name    Tool name for error messages.
+	 * @return true|\WP_Error True if valid, WP_Error with validation details on failure.
+	 */
+	public function validate_arguments( array $arguments, array $input_schema, string $tool_name ): true|\WP_Error {
+		if ( ! class_exists( Validator::class ) ) {
+			return true;
+		}
+
+		try {
+			$validator = new Validator();
+
+			// Convert arguments and schema to JSON objects for Opis.
+			// Force empty arrays to objects so JSON encodes as {} not [].
+			$arguments_json = json_decode( (string) wp_json_encode( empty( $arguments ) ? new \stdClass() : $arguments ) );
+			$schema_json    = json_decode( (string) wp_json_encode( empty( $input_schema ) ? new \stdClass() : $input_schema ) );
+
+			if ( null === $arguments_json || null === $schema_json ) {
+				return true;
+			}
+
+			$result = $validator->validate( $arguments_json, $schema_json );
+
+			if ( $result->isValid() ) {
+				return true;
+			}
+
+			$opis_errors = $result->error();
+
+			if ( null === $opis_errors ) {
+				return true;
+			}
+
+			$formatted_errors = $this->extract_opis_errors( $opis_errors, $tool_name );
+
+			return new \WP_Error(
+				'invalid_arguments',
+				sprintf(
+					/* translators: %s: Tool name */
+					__( 'Tool "%s" received invalid arguments.', 'bricks-mcp' ),
+					$tool_name
+				),
+				[ 'errors' => $formatted_errors ]
+			);
+		} catch ( \Throwable $e ) {
+			// If Opis validation itself throws, skip — don't block tool execution.
+			return true;
+		}
+	}
+
+	/**
 	 * Validate settings against a JSON schema using Opis JSON Schema.
 	 *
 	 * @param array<string, mixed> $settings        Element settings to validate.
