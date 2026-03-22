@@ -2719,6 +2719,7 @@ final class Router {
 				'toggleAttribute'  => 'Toggle HTML attribute on target',
 				'toggleOffCanvas'  => 'Toggle Bricks off-canvas element',
 				'loadMore'         => 'Load more results in query loop (requires loadMoreQuery)',
+				'loadMoreGallery'  => 'Load more images in Image Gallery element (Bricks 2.3+). Configure loadMoreInitial, loadMoreStep, loadMoreInfiniteScroll, loadMoreInfiniteScrollDelay, loadMoreInfiniteScrollOffset on the Image Gallery element settings, then add this interaction action on the trigger element (e.g. a button)',
 				'scrollTo'         => 'Smooth scroll to target element',
 				'javascript'       => 'Call a global JS function (GSAP bridge, requires jsFunction)',
 				'openAddress'      => 'Open map info box',
@@ -2754,6 +2755,7 @@ final class Router {
 				'formId'                => 'Required for formSubmit/formSuccess/formError triggers',
 				'templateId'            => 'Required for target="popup"',
 				'loadMoreQuery'         => 'Required for loadMore action. Typically "main"',
+				'loadMoreTargetSelector' => 'Required for loadMoreGallery action. CSS selector of the Image Gallery element, e.g. "#brxe-abc123"',
 				'interactionConditions' => 'Optional. Array of condition objects for conditional execution',
 			),
 			'animation_types'   => array(
@@ -2814,6 +2816,28 @@ final class Router {
 					),
 				),
 			),
+			'image_gallery_load_more' => array(
+					'description'               => 'Image Gallery with load more + infinite scroll (Bricks 2.3+). Step 1: Set load more settings on the Image Gallery element. Step 2: Add a button with loadMoreGallery interaction targeting the gallery.',
+					'step_1_gallery_settings'   => array(
+						'note'                          => 'Set these on the Image Gallery element settings (not in _interactions)',
+						'loadMoreInitial'               => 6,
+						'loadMoreStep'                  => 3,
+						'loadMoreInfiniteScroll'        => true,
+						'loadMoreInfiniteScrollDelay'   => '600ms',
+						'loadMoreInfiniteScrollOffset'  => '200px',
+					),
+					'step_2_button_interactions' => array(
+						'note'           => 'Add this interaction on the button or trigger element. loadMoreGallery does not use target/targetSelector — it uses loadMoreTargetSelector instead.',
+						'_interactions'  => array(
+							array(
+								'id'                     => 'pp7qq8',
+								'trigger'                => 'click',
+								'action'                 => 'loadMoreGallery',
+								'loadMoreTargetSelector' => '#brxe-{galleryElementId}',
+							),
+						),
+					),
+				),
 			'notes'             => array(
 				'Each interaction id must be unique — 6-char lowercase alphanumeric (same format as element IDs).',
 				'Animation types containing "In" (case-sensitive) automatically hide the element on page load and reveal on animation.',
