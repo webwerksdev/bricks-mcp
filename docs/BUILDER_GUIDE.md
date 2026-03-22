@@ -77,6 +77,12 @@ section
 | `_border` | object | `{"radius": {"top": "12px", "right": "12px", "bottom": "12px", "left": "12px"}, "style": "solid", "color": {"hex": "#E2E8F0"}, "width": 1}` |
 | `_flexGrow` | int | `1` |
 | `_width` | string | `"100%"`, `"33.33%"` |
+| `_motionElementParallax` | boolean | `true` — Enable element parallax (Bricks 2.3+, Transform group) |
+| `_motionElementParallaxSpeedX` | number | Horizontal speed %. CSS var `--brx-motion-parallax-speed-x`. Requires `_motionElementParallax: true` |
+| `_motionElementParallaxSpeedY` | number | Vertical speed %. CSS var `--brx-motion-parallax-speed-y`. Requires `_motionElementParallax: true` |
+| `_motionBackgroundParallax` | boolean | `true` — Enable background image parallax (Bricks 2.3+, Transform group) |
+| `_motionBackgroundParallaxSpeed` | number | Background speed %. CSS var `--brx-motion-background-speed`. Requires `_motionBackgroundParallax: true` |
+| `_motionStartVisiblePercent` | number | 0–100. Where parallax starts based on viewport scroll progress (0 = entering, 50 = near center) |
 
 ### Properties That Do NOT Generate CSS
 
@@ -266,9 +272,39 @@ Trigger animations or visibility changes on click:
 
 For show/hide, use `action: "show"` or `action: "hide"` with `target: "custom"` and `targetSelector: "#brxe-elementId"`.
 
+### Pattern: Native Parallax (Bricks 2.3+)
+
+Bricks 2.3 adds built-in parallax as style properties under the Transform control group — no GSAP or custom JS needed. Set these directly in element settings:
+
+**Element parallax** — moves the element itself while scrolling:
+
+```json
+{
+  "_motionElementParallax": true,
+  "_motionElementParallaxSpeedX": 0,
+  "_motionElementParallaxSpeedY": -20,
+  "_motionStartVisiblePercent": 0
+}
+```
+
+**Background parallax** — moves the background image while scrolling:
+
+```json
+{
+  "_motionBackgroundParallax": true,
+  "_motionBackgroundParallaxSpeed": -15,
+  "_motionStartVisiblePercent": 0
+}
+```
+
+- Speed values are percentages. Negative = opposite scroll direction, positive = same direction.
+- `_motionStartVisiblePercent` controls when the effect begins (0 = element entering viewport, 50 = near center).
+- Parallax effects are not visible in the Bricks builder preview — only on the live frontend.
+- These are NOT interactions — they are style properties set directly on element settings, same as `_padding` or `_typography`.
+
 ### Pattern: GSAP Integration (Advanced)
 
-GSAP is NOT bundled with Bricks. The site owner must load it (CDN or local). The MCP plugin does not enqueue GSAP. Use this two-step pattern for advanced animations like scroll-scrub, timelines, and parallax.
+GSAP is NOT bundled with Bricks. The site owner must load it (CDN or local). The MCP plugin does not enqueue GSAP. Use this two-step pattern for advanced animations like scroll-scrub and timelines. For simple parallax, prefer the native parallax properties above — use GSAP only when you need advanced control (custom easing, scrub values, timeline sequencing).
 
 **Step 1 — Inject GSAP init script via page footer:**
 

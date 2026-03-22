@@ -2808,8 +2808,28 @@ final class Router {
 						array( 'id' => 'kk1ll2', 'trigger' => 'animationEnd', 'animationId' => 'ii9jj0', 'action' => 'startAnimation', 'animationType' => 'fadeIn', 'animationDuration' => '0.6s', 'animationDelay' => '0s', 'target' => 'self' ),
 					),
 				),
+				'native_parallax' => array(
+					'description'          => 'Native parallax (Bricks 2.3+). Style properties under Transform group — no GSAP or interactions needed. Prefer this over GSAP for simple parallax.',
+					'element_parallax'     => array(
+						'_motionElementParallax'       => true,
+						'_motionElementParallaxSpeedX'  => 0,
+						'_motionElementParallaxSpeedY'  => -20,
+						'_motionStartVisiblePercent'    => 0,
+					),
+					'background_parallax'  => array(
+						'_motionBackgroundParallax'      => true,
+						'_motionBackgroundParallaxSpeed' => -15,
+						'_motionStartVisiblePercent'     => 0,
+					),
+					'notes'                => array(
+						'Speed values are percentages. Negative = opposite scroll direction.',
+						'_motionStartVisiblePercent: 0 = element entering viewport, 50 = near center.',
+						'Not visible in builder preview — only on live frontend.',
+						'These are style properties, NOT interactions. Set directly on element settings.',
+					),
+				),
 				'gsap_parallax'  => array(
-					'description'                => 'GSAP ScrollTrigger parallax via javascript action. Requires GSAP loaded on page.',
+					'description'                => 'GSAP ScrollTrigger parallax via javascript action. Requires GSAP loaded on page. For simple parallax, prefer native_parallax example above. Use GSAP only for advanced control (custom easing, scrub values, timeline sequencing).',
 					'step_1_page_script'         => 'Use page:update_settings with customScriptsBodyFooter to add: <script>document.addEventListener("DOMContentLoaded",function(){if(typeof gsap==="undefined")return;gsap.registerPlugin(ScrollTrigger);window.brxGsap={parallax:function(b){gsap.to(b.source,{yPercent:-20,ease:"none",scrollTrigger:{trigger:b.source,scrub:1}})}}});</script>',
 					'step_2_element_interaction'  => array(
 						array( 'id' => 'mm3nn4', 'trigger' => 'contentLoaded', 'action' => 'javascript', 'jsFunction' => 'brxGsap.parallax', 'jsFunctionArgs' => array( array( 'id' => 'oo5pp6', 'jsFunctionArg' => '%brx%' ) ), 'target' => 'self' ),
