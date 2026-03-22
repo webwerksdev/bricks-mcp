@@ -3,7 +3,7 @@ Contributors: cristianuibar
 Tags: ai, bricks builder, mcp, artificial intelligence, page builder
 Requires at least: 6.4
 Tested up to: 6.8
-Stable tag: 1.2.0
+Stable tag: 1.2.1
 Requires PHP: 8.2
 License: GPL-2.0-or-later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -107,6 +107,13 @@ Yes, when configured correctly. The plugin enforces WordPress Application Passwo
 
 == Changelog ==
 
+= 1.2.1 =
+* Compatibility: Document Bricks 2.3 toggle-mode element in Builder Guide, data model, and SchemaGenerator.
+* Compatibility: Document Bricks 2.3 filter improvements in get_filter_schema.
+* Compatibility: Document Bricks 2.3 Image Gallery load more and infinite scroll settings.
+* Compatibility: Add loadMoreGallery interaction action for Bricks 2.3 Image Gallery.
+* Compatibility: Document Bricks 2.3 perspective, scale3d, and parallax style properties.
+
 = 1.2.0 =
 * Security: Remove CORS wildcard headers and enforce per-user rate limiting.
 * Security: Add `current_user_can()` authorization checks to tool execution and WordPress tool.
@@ -152,6 +159,9 @@ Yes, when configured correctly. The plugin enforces WordPress Application Passwo
 * Unsplash API integration for image search.
 
 == Upgrade Notice ==
+
+= 1.2.1 =
+Bricks 2.3 compatibility: toggle-mode element, filter improvements, Image Gallery load more/infinite scroll, perspective and parallax properties.
 
 = 1.2.0 =
 Security hardening, input validation, authorization checks, rate limiting overhaul, N+1 query fix, and accessibility improvements.
