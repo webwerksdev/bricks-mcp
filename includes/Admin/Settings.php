@@ -240,8 +240,8 @@ final class Settings {
 	public function render_enabled_field(): void {
 		$settings = get_option( self::OPTION_NAME, $this->get_defaults() );
 		?>
-		<label>
-			<input type="checkbox" name="<?php echo esc_attr( self::OPTION_NAME ); ?>[enabled]" value="1" <?php checked( ! empty( $settings['enabled'] ) ); ?>>
+		<label for="bricks-mcp-enabled">
+			<input type="checkbox" id="bricks-mcp-enabled" name="<?php echo esc_attr( self::OPTION_NAME ); ?>[enabled]" value="1" <?php checked( ! empty( $settings['enabled'] ) ); ?>>
 			<?php esc_html_e( 'Enable the MCP server endpoints', 'bricks-mcp' ); ?>
 		</label>
 		<p class="description">
@@ -258,8 +258,8 @@ final class Settings {
 	public function render_require_auth_field(): void {
 		$settings = get_option( self::OPTION_NAME, $this->get_defaults() );
 		?>
-		<label>
-			<input type="checkbox" name="<?php echo esc_attr( self::OPTION_NAME ); ?>[require_auth]" value="1" <?php checked( ! empty( $settings['require_auth'] ) ); ?>>
+		<label for="bricks-mcp-require-auth">
+			<input type="checkbox" id="bricks-mcp-require-auth" name="<?php echo esc_attr( self::OPTION_NAME ); ?>[require_auth]" value="1" <?php checked( ! empty( $settings['require_auth'] ) ); ?>>
 			<?php esc_html_e( 'Require user authentication for MCP endpoints', 'bricks-mcp' ); ?>
 		</label>
 		<p class="description">
@@ -277,7 +277,7 @@ final class Settings {
 		$settings = get_option( self::OPTION_NAME, $this->get_defaults() );
 		$value    = $settings['custom_base_url'] ?? '';
 		?>
-		<input type="url" name="<?php echo esc_attr( self::OPTION_NAME ); ?>[custom_base_url]"
+		<input type="url" id="bricks-mcp-custom-base-url" name="<?php echo esc_attr( self::OPTION_NAME ); ?>[custom_base_url]"
 			value="<?php echo esc_attr( $value ); ?>" class="regular-text"
 			placeholder="<?php echo esc_attr( get_site_url() ); ?>">
 		<p class="description">
@@ -294,8 +294,8 @@ final class Settings {
 	public function render_dangerous_actions_field(): void {
 		$settings = get_option( self::OPTION_NAME, $this->get_defaults() );
 		?>
-		<label>
-			<input type="checkbox" name="<?php echo esc_attr( self::OPTION_NAME ); ?>[dangerous_actions]" value="1" <?php checked( ! empty( $settings['dangerous_actions'] ) ); ?>>
+		<label for="bricks-mcp-dangerous-actions">
+			<input type="checkbox" id="bricks-mcp-dangerous-actions" name="<?php echo esc_attr( self::OPTION_NAME ); ?>[dangerous_actions]" value="1" <?php checked( ! empty( $settings['dangerous_actions'] ) ); ?>>
 			<?php esc_html_e( 'Enable dangerous actions mode', 'bricks-mcp' ); ?>
 		</label>
 		<div style="margin-top: 10px; padding: 10px 12px; border-left: 4px solid #d63638; background: #fcf0f0;">
@@ -316,7 +316,7 @@ final class Settings {
 		$settings = get_option( self::OPTION_NAME, $this->get_defaults() );
 		$value    = (int) ( $settings['rate_limit_rpm'] ?? 120 );
 		?>
-		<input type="number" name="<?php echo esc_attr( self::OPTION_NAME ); ?>[rate_limit_rpm]"
+		<input type="number" id="bricks-mcp-rate-limit-rpm" name="<?php echo esc_attr( self::OPTION_NAME ); ?>[rate_limit_rpm]"
 			value="<?php echo esc_attr( (string) $value ); ?>" min="10" max="1000" step="10" class="small-text">
 		<span><?php esc_html_e( 'requests per minute per user', 'bricks-mcp' ); ?></span>
 		<p class="description">
@@ -511,17 +511,17 @@ final class Settings {
 			<h3 style="margin-top:0;"><?php esc_html_e( 'Manual Setup', 'bricks-mcp' ); ?></h3>
 
 			<div class="bricks-mcp-tabs" style="margin-top:15px;">
-				<div style="border-bottom:2px solid #ddd;margin-bottom:15px;">
-					<button type="button" data-tab="claude" class="active" style="background:none;border:none;padding:8px 16px;cursor:pointer;font-size:14px;font-weight:600;border-bottom:2px solid #2271b1;margin-bottom:-2px;">
+				<div role="tablist" style="border-bottom:2px solid #ddd;margin-bottom:15px;">
+					<button type="button" role="tab" id="bricks-mcp-tab-claude" data-tab="claude" aria-selected="true" aria-controls="bricks-mcp-panel-claude" tabindex="0" class="active" style="background:none;border:none;padding:8px 16px;cursor:pointer;font-size:14px;font-weight:600;border-bottom:2px solid #2271b1;margin-bottom:-2px;">
 						<?php esc_html_e( 'Claude Code', 'bricks-mcp' ); ?>
 					</button>
-					<button type="button" data-tab="gemini" style="background:none;border:none;padding:8px 16px;cursor:pointer;font-size:14px;color:#666;border-bottom:2px solid transparent;margin-bottom:-2px;">
+					<button type="button" role="tab" id="bricks-mcp-tab-gemini" data-tab="gemini" aria-selected="false" aria-controls="bricks-mcp-panel-gemini" tabindex="-1" style="background:none;border:none;padding:8px 16px;cursor:pointer;font-size:14px;color:#666;border-bottom:2px solid transparent;margin-bottom:-2px;">
 						<?php esc_html_e( 'Gemini', 'bricks-mcp' ); ?>
 					</button>
 				</div>
 
 				<!-- Claude Code Panel -->
-				<div data-panel="claude">
+				<div role="tabpanel" id="bricks-mcp-panel-claude" aria-labelledby="bricks-mcp-tab-claude" data-panel="claude">
 					<div style="position:relative;">
 						<pre style="background:#1e1e1e;color:#d4d4d4;padding:15px;border-radius:4px;overflow:auto;margin:0;"><code id="bricks-mcp-claude-config"><?php echo esc_html( $claude_config ); ?></code></pre>
 						<button type="button" class="button bricks-mcp-copy-btn" data-target="bricks-mcp-claude-config" style="position:absolute;top:8px;right:8px;">
@@ -546,7 +546,7 @@ final class Settings {
 				</div>
 
 				<!-- Gemini Panel -->
-				<div data-panel="gemini" style="display:none;">
+				<div role="tabpanel" id="bricks-mcp-panel-gemini" aria-labelledby="bricks-mcp-tab-gemini" data-panel="gemini" style="display:none;">
 					<div style="position:relative;">
 						<pre style="background:#1e1e1e;color:#d4d4d4;padding:15px;border-radius:4px;overflow:auto;margin:0;"><code id="bricks-mcp-gemini-config"><?php echo esc_html( $gemini_config ); ?></code></pre>
 						<button type="button" class="button bricks-mcp-copy-btn" data-target="bricks-mcp-gemini-config" style="position:absolute;top:8px;right:8px;">
