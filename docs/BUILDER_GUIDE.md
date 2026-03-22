@@ -77,6 +77,8 @@ section
 | `_border` | object | `{"radius": {"top": "12px", "right": "12px", "bottom": "12px", "left": "12px"}, "style": "solid", "color": {"hex": "#E2E8F0"}, "width": 1}` |
 | `_flexGrow` | int | `1` |
 | `_width` | string | `"100%"`, `"33.33%"` |
+| `_perspective` | string | `"800px"` — CSS `perspective` property. Number with unit (Bricks 2.3+, Layout group) |
+| `_perspectiveOrigin` | string | `"center"`, `"50% 50%"`, `"left top"` — CSS `perspective-origin` (Bricks 2.3+, Layout group) |
 | `_motionElementParallax` | boolean | `true` — Enable element parallax (Bricks 2.3+, Transform group) |
 | `_motionElementParallaxSpeedX` | number | Horizontal speed %. CSS var `--brx-motion-parallax-speed-x`. Requires `_motionElementParallax: true` |
 | `_motionElementParallaxSpeedY` | number | Vertical speed %. CSS var `--brx-motion-parallax-speed-y`. Requires `_motionElementParallax: true` |
@@ -104,6 +106,41 @@ For anything not covered by built-in settings:
 ```
 
 **Important:** Use `#brxe-{elementId}` (the actual rendered selector), NOT `%root%`. The `%root%` placeholder only works inside the Bricks visual editor, not via API.
+
+### Transforms (`_transform`)
+
+The `_transform` control generates the CSS `transform` property. Set it as an object with function keys:
+
+| Key | Type | Unit | Example |
+|-----|------|------|---------|
+| `translateX` | number/string | px (default if number-only) | `"50px"`, `"10%"`, `50` |
+| `translateY` | number/string | px (default if number-only) | `"-20px"`, `"5vh"` |
+| `rotateX` | number | deg (auto-appended) | `45` = `rotateX(45deg)` |
+| `rotateY` | number | deg (auto-appended) | `180` |
+| `rotateZ` | number | deg (auto-appended) | `90` |
+| `skewX` | number | deg (auto-appended) | `10` |
+| `skewY` | number | deg (auto-appended) | `5` |
+| `scale3dX` | number | unitless | `1.2` (Bricks 2.3+) |
+| `scale3dY` | number | unitless | `0.8` (Bricks 2.3+) |
+| `scale3dZ` | number | unitless | `1` (Bricks 2.3+) |
+| `perspective` | number/string | px (default if number-only) | `"800px"` (Bricks 2.3+, always first in output) |
+
+```json
+{
+  "_transform": {
+    "translateY": "-20px",
+    "rotateZ": 5,
+    "scale3dX": 1.1,
+    "scale3dY": 1.1,
+    "scale3dZ": 1
+  },
+  "_transformOrigin": "center center"
+}
+```
+
+- `scale3d` requires at least one of scale3dX/Y/Z; omitted axes default to `1`.
+- `perspective` inside `_transform` is always placed first in the CSS output (required by spec).
+- `_transformOrigin` (string) sets `transform-origin`. Default: `"center"`.
 
 ### Responsive Breakpoints
 
