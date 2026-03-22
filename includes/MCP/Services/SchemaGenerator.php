@@ -324,11 +324,14 @@ class SchemaGenerator {
 				'htmlEmail'        => true,
 				'submitButtonText' => 'Send',
 			],
-			'nav-menu'   => [],
-			'posts'      => [],
-			'pagination' => [],
-			'logo'       => [],
-			'search'     => [],
+			'nav-menu'    => [],
+			'posts'       => [],
+			'pagination'  => [],
+			'logo'        => [],
+			'search'      => [],
+			'toggle-mode' => [
+				'ariaLabel' => 'Toggle mode',
+			],
 		];
 
 		if ( isset( $known_examples[ $element_name ] ) ) {
