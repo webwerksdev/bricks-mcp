@@ -59,7 +59,6 @@ final class Server {
 	 */
 	public function init(): void {
 		add_action( 'rest_api_init', [ $this, 'register_routes' ] );
-		add_filter( 'rest_pre_serve_request', [ $this, 'add_cors_headers' ], 10, 4 );
 		add_filter( 'rest_request_before_callbacks', [ $this, 'intercept_json_parse_error' ], 10, 3 );
 	}
 
@@ -134,32 +133,6 @@ final class Server {
 	}
 
 	/**
-	 * Add CORS headers for bricks-mcp namespace routes.
-	 *
-	 * Scoped to the bricks-mcp/v1 namespace only to avoid affecting other REST routes.
-	 *
-	 * @param bool              $served  Whether the request has already been served.
-	 * @param \WP_REST_Response $result  The response object.
-	 * @param \WP_REST_Request  $request The request object.
-	 * @param \WP_REST_Server   $server  The REST server instance.
-	 * @return bool Whether the request has been served.
-	 */
-	public function add_cors_headers( bool $served, \WP_REST_Response $result, \WP_REST_Request $request, \WP_REST_Server $server ): bool { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter.FoundAfterLastUsed
-		// Only add CORS headers for our namespace.
-		$route = $request->get_route();
-		if ( ! str_starts_with( $route, '/' . self::API_NAMESPACE ) ) {
-			return $served;
-		}
-
-		header( 'Access-Control-Allow-Origin: *' );
-		header( 'Access-Control-Allow-Methods: GET, POST, DELETE, OPTIONS' );
-		header( 'Access-Control-Allow-Headers: Authorization, Content-Type, Accept' );
-		header( 'Access-Control-Max-Age: 86400' );
-
-		return $served;
-	}
-
-	/**
 	 * Check request permissions.
 	 *
 	 * @param \WP_REST_Request $request The REST request.
@@ -195,8 +168,52 @@ final class Server {
 					[ 'status' => 403 ]
 				);
 			}
+
+			// Rate limit authenticated users.
+			$rate_check = $this->check_rate_limit( get_current_user_id() );
+			if ( is_wp_error( $rate_check ) ) {
+				return $rate_check;
+			}
 		}
 
+		return true;
+	}
+
+	/**
+	 * Check rate limit for a given user.
+	 *
+	 * Uses a transient-based sliding window counter. Returns WP_Error with
+	 * HTTP 429 and Retry-After header when the limit is exceeded.
+	 *
+	 * @param int $user_id The user ID to check.
+	 * @return true|\WP_Error True if within limit, WP_Error if exceeded.
+	 */
+	private function check_rate_limit( int $user_id ): true|\WP_Error {
+		$settings = get_option( 'bricks_mcp_settings', [] );
+		$limit    = (int) ( $settings['rate_limit_rpm'] ?? 120 );
+		$window   = 60;
+		$key      = 'bricks_mcp_rl_' . $user_id;
+		$count    = get_transient( $key );
+
+		if ( false === $count ) {
+			set_transient( $key, 1, $window );
+			return true;
+		}
+
+		if ( (int) $count >= $limit ) {
+			$expiry      = (int) get_option( '_transient_timeout_' . $key, time() + $window );
+			$retry_after = max( 1, $expiry - time() );
+
+			header( 'Retry-After: ' . $retry_after );
+
+			return new \WP_Error(
+				'bricks_mcp_rate_limit',
+				__( 'Rate limit exceeded. Try again later.', 'bricks-mcp' ),
+				[ 'status' => 429 ]
+			);
+		}
+
+		set_transient( $key, (int) $count + 1, $window );
 		return true;
 	}
 

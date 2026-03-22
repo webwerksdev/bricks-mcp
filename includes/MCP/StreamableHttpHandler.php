@@ -91,7 +91,31 @@ final class StreamableHttpHandler {
 	 * @return void Outputs SSE stream and exits.
 	 */
 	public function handle_post( \WP_REST_Request $request ): void {
-		$this->emit_cors_headers();
+		// Rate limit check — only when auth is required and user is logged in.
+		$settings = get_option( 'bricks_mcp_settings', [] );
+		if ( ! empty( $settings['require_auth'] ) && is_user_logged_in() ) {
+			$limit  = (int) ( $settings['rate_limit_rpm'] ?? 120 );
+			$window = 60;
+			$key    = 'bricks_mcp_rl_' . get_current_user_id();
+			$count  = get_transient( $key );
+
+			if ( false === $count ) {
+				set_transient( $key, 1, $window );
+			} elseif ( (int) $count >= $limit ) {
+				$expiry      = (int) get_option( '_transient_timeout_' . $key, time() + $window );
+				$retry_after = max( 1, $expiry - time() );
+
+				status_header( 429 );
+				header( 'Content-Type: application/json' );
+				header( 'Retry-After: ' . $retry_after );
+				echo wp_json_encode(
+					$this->jsonrpc_error( null, self::INTERNAL_ERROR, 'Rate limit exceeded. Try again later.' )
+				);
+				exit;
+			} else {
+				set_transient( $key, (int) $count + 1, $window );
+			}
+		}
 
 		// Validate Content-Type header contains application/json.
 		$content_type = $request->get_header( 'Content-Type' );
@@ -166,7 +190,6 @@ final class StreamableHttpHandler {
 	 * @return void Outputs SSE headers and exits.
 	 */
 	public function handle_get( \WP_REST_Request $request ): void { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter.Found
-		$this->emit_cors_headers();
 		header( 'Content-Type: text/event-stream' );
 		header( 'Cache-Control: no-cache' );
 		header( 'X-Accel-Buffering: no' );
@@ -183,7 +206,6 @@ final class StreamableHttpHandler {
 	 * @return void Outputs SSE parse error and exits.
 	 */
 	public function emit_parse_error_and_exit(): void {
-		$this->emit_cors_headers();
 		$this->emit_sse_headers();
 		$this->emit_sse_event( $this->jsonrpc_error( null, self::PARSE_ERROR, 'Parse error' ) );
 		exit;
@@ -198,7 +220,6 @@ final class StreamableHttpHandler {
 	 * @return void Sets 200 status and exits.
 	 */
 	public function handle_delete( \WP_REST_Request $request ): void { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter.Found
-		$this->emit_cors_headers();
 		status_header( 200 );
 		exit;
 	}
@@ -330,27 +351,11 @@ final class StreamableHttpHandler {
 			return $this->jsonrpc_error(
 				$id,
 				self::INTERNAL_ERROR,
-				$error_text ?: 'Tool execution failed'
+				$error_text ? $error_text : 'Tool execution failed'
 			);
 		}
 
 		return $this->jsonrpc_success( $id, $data );
-	}
-
-	/**
-	 * Emit CORS headers for the /mcp endpoint.
-	 *
-	 * Called early in each public handler to ensure CORS headers are present
-	 * on all responses, including those where we exit before WordPress's
-	 * rest_pre_serve_request filter fires.
-	 *
-	 * @return void
-	 */
-	private function emit_cors_headers(): void {
-		header( 'Access-Control-Allow-Origin: *' );
-		header( 'Access-Control-Allow-Methods: GET, POST, DELETE, OPTIONS' );
-		header( 'Access-Control-Allow-Headers: Authorization, Content-Type, Accept' );
-		header( 'Access-Control-Max-Age: 86400' );
 	}
 
 	/**
