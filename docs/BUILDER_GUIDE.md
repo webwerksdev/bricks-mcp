@@ -62,6 +62,11 @@ section
 | `icon` | icon | `{"library": "Ionicons", "icon": "ion-ios-rocket"}` |
 | `iconColor` | icon | `{"hex": "#3B82F6"}` |
 | `iconSize` | icon | `"48px"` |
+| `loadMoreInitial` | image-gallery | Number of images shown initially (enables load more) |
+| `loadMoreStep` | image-gallery | Images per load (`0` = all remaining) |
+| `loadMoreInfiniteScroll` | image-gallery | `true` to auto-load on scroll |
+| `loadMoreInfiniteScrollDelay` | image-gallery | Scroll trigger delay in ms (default `600`) |
+| `loadMoreInfiniteScrollOffset` | image-gallery | Scroll trigger offset in px (default `200`) |
 
 ### Style Properties (underscore prefix) — These Generate CSS
 
@@ -583,6 +588,80 @@ Pagination settings live inside the `query` object on the loop element.
 ```
 
 **Note:** Infinite scroll and load more button are mutually exclusive. Choose one approach per query loop.
+
+### Image Gallery Load More (Bricks 2.3+)
+
+The Image Gallery element has its own load more system, separate from query loop pagination. It progressively reveals images already present in the gallery using a "Load more" control group.
+
+#### Content Properties
+
+| Property | Type | Default | Description |
+|----------|------|---------|-------------|
+| `loadMoreInitial` | number | — | Images shown on initial load. Enables the load more system when set. Responsive (per-breakpoint values read on page load) |
+| `loadMoreStep` | number | — | Images revealed per load. Empty or `0` reveals all remaining images. Requires `loadMoreInitial` |
+| `loadMoreInfiniteScroll` | boolean | `false` | Auto-load more images when user scrolls near gallery end. Requires `loadMoreInitial` |
+| `loadMoreInfiniteScrollDelay` | number | `600` | Delay in ms between scroll trigger and loading more items. Requires `loadMoreInfiniteScroll` |
+| `loadMoreInfiniteScrollOffset` | number | `200` | Distance in px from gallery end at which to trigger loading. Requires `loadMoreInfiniteScroll` |
+
+All properties are content properties (no underscore prefix).
+
+#### Pattern: Gallery with Load More Button
+
+```json
+[
+  {
+    "id": "gallery1",
+    "name": "image-gallery",
+    "parent": "container1",
+    "children": [],
+    "settings": {
+      "images": [{"id": 101, "url": "..."}, {"id": 102, "url": "..."}, {"id": 103, "url": "..."}],
+      "loadMoreInitial": 4,
+      "loadMoreStep": 4
+    }
+  },
+  {
+    "id": "btn1",
+    "name": "button",
+    "parent": "container1",
+    "children": [],
+    "settings": {
+      "text": "Load More",
+      "_interactions": [
+        {
+          "trigger": "click",
+          "action": "loadMoreGallery",
+          "loadMoreGalleryTarget": "gallery1"
+        }
+      ]
+    }
+  }
+]
+```
+
+#### Pattern: Gallery with Infinite Scroll
+
+```json
+{
+  "id": "gallery1",
+  "name": "image-gallery",
+  "settings": {
+    "images": [{"id": 101, "url": "..."}, {"id": 102, "url": "..."}],
+    "loadMoreInitial": 6,
+    "loadMoreStep": 3,
+    "loadMoreInfiniteScroll": true,
+    "loadMoreInfiniteScrollDelay": 600,
+    "loadMoreInfiniteScrollOffset": 200
+  }
+}
+```
+
+**Key differences from query loop load more:**
+- Gallery load more reveals images already in the DOM (no server requests)
+- Uses the `loadMoreGallery` interaction action (not `loadMore`)
+- The `loadMoreGalleryTarget` points to the gallery element ID
+- `loadMoreInitial` and `loadMoreStep` support responsive values per breakpoint
+- Load more does not run inside the Bricks builder — only on the frontend
 
 ### Global Queries
 
