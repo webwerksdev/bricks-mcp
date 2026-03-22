@@ -170,50 +170,12 @@ final class Server {
 			}
 
 			// Rate limit authenticated users.
-			$rate_check = $this->check_rate_limit( get_current_user_id() );
+			$rate_check = RateLimiter::check( get_current_user_id() );
 			if ( is_wp_error( $rate_check ) ) {
 				return $rate_check;
 			}
 		}
 
-		return true;
-	}
-
-	/**
-	 * Check rate limit for a given user.
-	 *
-	 * Uses a transient-based sliding window counter. Returns WP_Error with
-	 * HTTP 429 and Retry-After header when the limit is exceeded.
-	 *
-	 * @param int $user_id The user ID to check.
-	 * @return true|\WP_Error True if within limit, WP_Error if exceeded.
-	 */
-	private function check_rate_limit( int $user_id ): true|\WP_Error {
-		$settings = get_option( 'bricks_mcp_settings', [] );
-		$limit    = (int) ( $settings['rate_limit_rpm'] ?? 120 );
-		$window   = 60;
-		$key      = 'bricks_mcp_rl_' . $user_id;
-		$count    = get_transient( $key );
-
-		if ( false === $count ) {
-			set_transient( $key, 1, $window );
-			return true;
-		}
-
-		if ( (int) $count >= $limit ) {
-			$expiry      = (int) get_option( '_transient_timeout_' . $key, time() + $window );
-			$retry_after = max( 1, $expiry - time() );
-
-			header( 'Retry-After: ' . $retry_after );
-
-			return new \WP_Error(
-				'bricks_mcp_rate_limit',
-				__( 'Rate limit exceeded. Try again later.', 'bricks-mcp' ),
-				[ 'status' => 429 ]
-			);
-		}
-
-		set_transient( $key, (int) $count + 1, $window );
 		return true;
 	}
 

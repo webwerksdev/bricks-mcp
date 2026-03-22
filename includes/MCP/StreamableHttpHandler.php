@@ -94,26 +94,15 @@ final class StreamableHttpHandler {
 		// Rate limit check — only when auth is required and user is logged in.
 		$settings = get_option( 'bricks_mcp_settings', [] );
 		if ( ! empty( $settings['require_auth'] ) && is_user_logged_in() ) {
-			$limit  = (int) ( $settings['rate_limit_rpm'] ?? 120 );
-			$window = 60;
-			$key    = 'bricks_mcp_rl_' . get_current_user_id();
-			$count  = get_transient( $key );
-
-			if ( false === $count ) {
-				set_transient( $key, 1, $window );
-			} elseif ( (int) $count >= $limit ) {
-				$expiry      = (int) get_option( '_transient_timeout_' . $key, time() + $window );
-				$retry_after = max( 1, $expiry - time() );
-
+			$rate_check = RateLimiter::check( get_current_user_id() );
+			if ( is_wp_error( $rate_check ) ) {
 				status_header( 429 );
 				header( 'Content-Type: application/json' );
-				header( 'Retry-After: ' . $retry_after );
+				header( 'Retry-After: 60' );
 				echo wp_json_encode(
-					$this->jsonrpc_error( null, self::INTERNAL_ERROR, 'Rate limit exceeded. Try again later.' )
+					$this->jsonrpc_error( null, self::INTERNAL_ERROR, $rate_check->get_error_message() )
 				);
 				exit;
-			} else {
-				set_transient( $key, (int) $count + 1, $window );
 			}
 		}
 
