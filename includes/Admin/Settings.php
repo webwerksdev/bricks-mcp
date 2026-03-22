@@ -387,7 +387,6 @@ final class Settings {
 	private function render_mcp_config(): void {
 		$current_user = wp_get_current_user();
 		$username     = $current_user->user_login;
-		$profile_url  = admin_url( 'profile.php' );
 
 		// Build MCP endpoint URL with optional custom base URL override.
 		$settings    = get_option( self::OPTION_NAME, $this->get_defaults() );
@@ -406,7 +405,7 @@ final class Settings {
 						'type'    => 'http',
 						'url'     => $mcp_url,
 						'headers' => [
-							'Authorization' => 'Basic ' . base64_encode( $username . ':YOUR_APP_PASSWORD' ),
+							'Authorization' => 'Basic YOUR_BASE64_AUTH_STRING',
 						],
 					],
 				],
@@ -421,7 +420,7 @@ final class Settings {
 					'bricks-mcp' => [
 						'httpUrl' => $mcp_url,
 						'headers' => [
-							'Authorization' => 'Basic ' . base64_encode( $username . ':YOUR_APP_PASSWORD' ),
+							'Authorization' => 'Basic YOUR_BASE64_AUTH_STRING',
 						],
 					],
 				],
@@ -506,13 +505,9 @@ final class Settings {
 					</p>
 					<p class="description">
 						<?php
-						printf(
-							/* translators: %s: link to profile page */
-							wp_kses(
-								__( 'Replace YOUR_APP_PASSWORD with an Application Password from <a href="%s">Users &gt; Profile</a>.', 'bricks-mcp' ),
-								[ 'a' => [ 'href' => [] ] ]
-							),
-							esc_url( $profile_url )
+						echo wp_kses(
+							__( 'Replace <code>YOUR_BASE64_AUTH_STRING</code> with the Base64-encoded value of <code>username:app_password</code>. Or use the <strong>Generate Setup Command</strong> button above for a ready-to-paste config.', 'bricks-mcp' ),
+							[ 'code' => [], 'strong' => [] ]
 						);
 						?>
 					</p>
@@ -531,13 +526,9 @@ final class Settings {
 					</p>
 					<p class="description">
 						<?php
-						printf(
-							/* translators: %s: link to profile page */
-							wp_kses(
-								__( 'Replace YOUR_APP_PASSWORD with an Application Password from <a href="%s">Users &gt; Profile</a>.', 'bricks-mcp' ),
-								[ 'a' => [ 'href' => [] ] ]
-							),
-							esc_url( $profile_url )
+						echo wp_kses(
+							__( 'Replace <code>YOUR_BASE64_AUTH_STRING</code> with the Base64-encoded value of <code>username:app_password</code>. Or use the <strong>Generate Setup Command</strong> button above for a ready-to-paste config.', 'bricks-mcp' ),
+							[ 'code' => [], 'strong' => [] ]
 						);
 						?>
 					</p>
