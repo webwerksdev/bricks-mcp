@@ -7842,14 +7842,14 @@ final class Router {
 		return array(
 			'popup_settings'   => array(
 				'outer'                => array(
-					'popupPadding'          => array( 'type' => 'spacing object', 'default' => null, 'description' => 'Padding of the .brx-popup container' ),
-					'popupJustifyContent'   => array( 'type' => 'string', 'default' => null, 'description' => 'justify-content CSS value for popup main axis alignment' ),
-					'popupAlignItems'       => array( 'type' => 'string', 'default' => null, 'description' => 'align-items CSS value for popup cross axis' ),
-					'popupCloseOn'          => array( 'type' => 'string', 'default' => 'both (unset)', 'description' => "Close behavior. 'backdrop' = click only, 'esc' = ESC only, 'none' = neither. Unset = both backdrop+ESC. Do NOT pass 'both'." ),
-					'popupZindex'           => array( 'type' => 'number', 'default' => 10000, 'description' => 'CSS z-index of the popup' ),
-					'popupBodyScroll'       => array( 'type' => 'boolean', 'default' => false, 'description' => 'Allow body scroll when popup is open' ),
-					'popupScrollToTop'      => array( 'type' => 'boolean', 'default' => false, 'description' => 'Scroll popup to top on open' ),
-					'popupDisableAutoFocus' => array( 'type' => 'boolean', 'default' => false, 'description' => 'Do not auto-focus first focusable element on open' ),
+					'popupPadding'          => array( 'type' => 'spacing object', 'default' => null, 'description' => 'Padding of the .brx-popup container (skipped when popupIsInfoBox=true)' ),
+					'popupJustifyContent'   => array( 'type' => 'string', 'default' => null, 'description' => 'justify-content CSS value for popup main axis alignment (skipped when popupIsInfoBox=true)' ),
+					'popupAlignItems'       => array( 'type' => 'string', 'default' => null, 'description' => 'align-items CSS value for popup cross axis (skipped when popupIsInfoBox=true)' ),
+					'popupCloseOn'          => array( 'type' => 'string', 'default' => 'both (unset)', 'description' => "Close behavior. 'backdrop' = click only, 'esc' = ESC only, 'none' = neither. Unset = both backdrop+ESC. Do NOT pass 'both'. (skipped when popupIsInfoBox=true)" ),
+					'popupZindex'           => array( 'type' => 'number', 'default' => 10000, 'description' => 'CSS z-index of the popup (skipped when popupIsInfoBox=true)' ),
+					'popupBodyScroll'       => array( 'type' => 'boolean', 'default' => false, 'description' => 'Allow body scroll when popup is open (skipped when popupIsInfoBox=true)' ),
+					'popupScrollToTop'      => array( 'type' => 'boolean', 'default' => false, 'description' => 'Scroll popup to top on open (skipped when popupIsInfoBox=true)' ),
+					'popupDisableAutoFocus' => array( 'type' => 'boolean', 'default' => false, 'description' => 'Do not auto-focus first focusable element on open (skipped when popupIsInfoBox=true)' ),
 				),
 				'info_box'             => array(
 					'popupIsInfoBox'    => array( 'type' => 'boolean', 'default' => false, 'description' => 'Enable Map Info Box mode (disables many other settings)' ),
@@ -7894,6 +7894,34 @@ final class Router {
 				'template_interactions' => array(
 					'type'        => 'repeater (same structure as element _interactions)',
 					'description' => "Popup-level interactions. Stored in _bricks_template_settings.template_interactions. Supports special triggers 'showPopup' (fires when popup is shown) and 'hidePopup' (fires after popup is hidden). Used for chaining animations or running JS on popup open/close — NOT for making the popup open itself.",
+				),
+			),
+			'infobox_behavior' => array(
+				'description'      => 'An infobox is a popup with popupIsInfoBox=true. Infoboxes are lightweight popups designed for Google Maps info windows. They skip many popup display settings.',
+				'skipped_settings' => array(
+					'popupPadding'        => 'Outer padding (infobox has no backdrop/overlay)',
+					'popupJustifyContent' => 'Main axis alignment (infobox positioned by map marker)',
+					'popupAlignItems'     => 'Cross axis alignment (infobox positioned by map marker)',
+					'popupCloseOn'        => 'Close behavior (infobox closes when map marker deselected)',
+					'popupZindex'         => 'Z-index (infobox managed by map layer)',
+					'popupBodyScroll'     => 'Body scroll lock (infobox does not overlay page)',
+				),
+				'active_settings'  => array(
+					'popupIsInfoBox'         => 'Must be true',
+					'popupInfoBoxWidth'      => 'Width in px (default 300)',
+					'popupContentPadding'    => 'Content padding',
+					'popupContentWidth'      => 'Content width',
+					'popupContentBackground' => 'Content background',
+					'popupContentBorder'     => 'Content border',
+					'popupContentBoxShadow'  => 'Content shadow',
+					'popupAjax'              => 'AJAX loading supported',
+					'template_interactions'  => 'Popup-level interactions supported',
+				),
+				'creation_workflow' => array(
+					'step_1' => "template:create with type='popup' and title='My Infobox'",
+					'step_2' => "template:set_popup_settings with settings={popupIsInfoBox: true, popupInfoBoxWidth: 300}",
+					'step_3' => 'page:update_content to add elements to the infobox template',
+					'step_4' => 'Use in a Bricks Map element by referencing the template ID',
 				),
 			),
 			'trigger_patterns' => array(
@@ -7957,7 +7985,9 @@ final class Router {
 				'Use bricks:get_interaction_schema for full trigger/action reference',
 				'Use template:get_popup_settings to read current popup config, template:set_popup_settings to write (license required)',
 				'Null value in set_popup_settings deletes that key (reverts to default)',
-			),
+				'An infobox is a popup sub-type (popupIsInfoBox=true). Create as popup, then set popupIsInfoBox via set_popup_settings. See infobox_behavior for which settings apply.',
+				'template:list and template:get responses include is_infobox boolean for quick identification.',
+				),
 		);
 	}
 
