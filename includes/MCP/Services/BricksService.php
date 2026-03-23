@@ -5480,6 +5480,8 @@ class BricksService {
 				'builderDisableRestApi',
 				'builderInsertElement',
 				'builderInsertLayout',
+				'builderGlobalClassesImport',
+				'builderHtmlCssConverter',
 				'customBreakpoints',
 				'enableDynamicDataPreview',
 				'enableQueryFilters',
