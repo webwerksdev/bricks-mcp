@@ -3,7 +3,7 @@ Contributors: cristianuibar
 Tags: ai, bricks builder, mcp, artificial intelligence, page builder
 Requires at least: 6.4
 Tested up to: 6.8
-Stable tag: 1.2.1
+Stable tag: 1.3.0
 Requires PHP: 8.2
 License: GPL-2.0-or-later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -107,6 +107,17 @@ Yes, when configured correctly. The plugin enforces WordPress Application Passwo
 
 == Changelog ==
 
+= 1.3.0 =
+* New: Add MCP instructions field to initialize response to guide AI clients on available tools.
+* New: Surface Bricks 2.3 builder settings (builderHtmlCssConverter, builderGlobalClassesImport) in get_settings.
+* New: Add is_infobox flag to template list, get, and get_popup_settings responses.
+* New: Enhance get_popup_schema with infobox_behavior block.
+* Compatibility: Accept 'light' as canonical color param with 'hex' as alias in color_palette tool.
+* Compatibility: Update Builder Guide with Bricks 2.3 CSS gotchas (_gap, _display, _widthMax corrections).
+* Compatibility: Document Bricks 2.3 video element objectFit control in Builder Guide.
+* Compatibility: Update wc_thankyou scaffold with Bricks 2.3 button styling controls.
+* Compatibility: Document builderHtmlCssConverter and builderGlobalClassesImport in Builder Guide Key Gotchas.
+
 = 1.2.1 =
 * Compatibility: Document Bricks 2.3 toggle-mode element in Builder Guide, data model, and SchemaGenerator.
 * Compatibility: Document Bricks 2.3 filter improvements in get_filter_schema.
@@ -159,6 +170,9 @@ Yes, when configured correctly. The plugin enforces WordPress Application Passwo
 * Unsplash API integration for image search.
 
 == Upgrade Notice ==
+
+= 1.3.0 =
+MCP initialize instructions, infobox template support, Bricks 2.3 builder settings and CSS gotcha corrections, color param aliases.
 
 = 1.2.1 =
 Bricks 2.3 compatibility: toggle-mode element, filter improvements, Image Gallery load more/infinite scroll, perspective and parallax properties.
