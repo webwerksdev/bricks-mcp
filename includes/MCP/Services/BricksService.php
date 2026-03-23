@@ -938,6 +938,7 @@ class BricksService {
 				'title'         => $post->post_title,
 				'status'        => $post->post_status,
 				'type'          => ! empty( $template_type ) ? $template_type : 'content',
+				'is_infobox'    => 'popup' === $template_type && ! empty( $settings['popupIsInfoBox'] ),
 				'conditions'    => $this->format_conditions( $settings ),
 				'element_count' => count( $elements ),
 				'modified'      => $post->post_modified,
@@ -1004,6 +1005,7 @@ class BricksService {
 			'id'           => $template_id,
 			'title'        => $post->post_title,
 			'type'         => ! empty( $template_type ) ? $template_type : 'content',
+			'is_infobox'   => 'popup' === $template_type && ! empty( $settings['popupIsInfoBox'] ),
 			'conditions'   => $this->format_conditions( $settings ),
 			'elements'     => $elements,
 			'classes_used' => array_values( array_unique( $used_class_names ) ),
@@ -5832,6 +5834,7 @@ class BricksService {
 		return array(
 			'template_id'            => $template_id,
 			'title'                  => $post->post_title,
+			'is_infobox'             => ! empty( $popup_keys['popupIsInfoBox'] ),
 			'popup_settings'         => $popup_keys,
 			'template_interactions'  => $template_interactions,
 		);
