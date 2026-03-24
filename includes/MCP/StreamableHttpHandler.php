@@ -91,20 +91,7 @@ final class StreamableHttpHandler {
 	 * @return void Outputs SSE stream and exits.
 	 */
 	public function handle_post( \WP_REST_Request $request ): void {
-		// Rate limit check — only when auth is required and user is logged in.
-		$settings = get_option( 'bricks_mcp_settings', [] );
-		if ( ! empty( $settings['require_auth'] ) && is_user_logged_in() ) {
-			$rate_check = RateLimiter::check( get_current_user_id() );
-			if ( is_wp_error( $rate_check ) ) {
-				status_header( 429 );
-				header( 'Content-Type: application/json' );
-				header( 'Retry-After: 60' );
-				echo wp_json_encode(
-					$this->jsonrpc_error( null, self::INTERNAL_ERROR, $rate_check->get_error_message() )
-				);
-				exit;
-			}
-		}
+		// Rate limiting is handled upstream by Server::check_permissions() (permission_callback).
 
 		// Validate Content-Type header contains application/json.
 		$content_type = $request->get_header( 'Content-Type' );
