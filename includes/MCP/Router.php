@@ -387,8 +387,8 @@ final class Router {
 
 		$posts  = get_posts( $query_args );
 
-		// Prime thumbnail cache to avoid N+1 queries for get_the_post_thumbnail_url().
-		update_post_thumbnail_cache( $posts );
+		// Prime meta cache (includes thumbnail IDs) to avoid N+1 queries for get_the_post_thumbnail_url().
+		update_postmeta_cache( wp_list_pluck( $posts, 'ID' ) );
 
 		$result = array();
 
