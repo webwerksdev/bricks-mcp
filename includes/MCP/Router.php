@@ -120,10 +120,16 @@ final class Router {
 		// Get site info tool.
 		$this->register_tool(
 			'get_site_info',
-			__( 'Get WordPress site information', 'bricks-mcp' ),
+			__( "Get WordPress site information.\n\nActions:\n- info: Basic site info (default)\n- diagnose: Run connection diagnostics (REST API, App Passwords, security plugins, hosting provider, MCP endpoint)", 'bricks-mcp' ),
 			array(
 				'type'       => 'object',
-				'properties' => new \stdClass(),
+				'properties' => array(
+					'action' => array(
+						'type'        => 'string',
+						'enum'        => array( 'info', 'diagnose' ),
+						'description' => __( 'Action to perform (default: info)', 'bricks-mcp' ),
+					),
+				),
 			),
 			array( $this, 'tool_get_site_info' )
 		);
@@ -337,7 +343,16 @@ final class Router {
 	 * @param array<string, mixed> $args Tool arguments (unused for this tool).
 	 * @return array<string, mixed> Site information.
 	 */
-	public function tool_get_site_info( array $args ): array { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter.Found
+	public function tool_get_site_info( array $args ): array {
+		$action = $args['action'] ?? 'info';
+
+		if ( 'diagnose' === $action ) {
+			$runner = new \BricksMCP\Admin\DiagnosticRunner();
+			$runner->register_defaults();
+			return $runner->run_all();
+		}
+
+		// Default: return site info (existing behavior).
 		return array(
 			'name'        => get_bloginfo( 'name' ),
 			'description' => get_bloginfo( 'description' ),
