@@ -1143,18 +1143,18 @@ final class Router {
 		// Global variable consolidated tool (replaces list_global_variables, create_variable_category, update_variable_category, delete_variable_category, create_global_variable, update_global_variable, delete_global_variable, batch_create_global_variables).
 		$this->register_tool(
 			'global_variable',
-			__( "Manage Bricks global CSS variables.\n\nActions:\n- list: List all global variables (no required params)\n- create_category: Create variable category (requires: category_name)\n- update_category: Rename variable category (requires: category_id, category_name)\n- delete_category: Delete variable category (requires: category_id)\n- create: Create variable (requires: name, value; optional: category)\n- update: Update variable (requires: variable_id; optional: name, value, category)\n- delete: Delete variable (requires: variable_id)\n- batch_create: Create multiple variables (requires: variables)", 'bricks-mcp' ),
+			__( "Manage Bricks global CSS variables.\n\nActions:\n- list: List all global variables (no required params)\n- create_category: Create variable category (requires: category_name)\n- update_category: Rename variable category (requires: category_id, category_name)\n- delete_category: Delete variable category (requires: category_id)\n- create: Create variable (requires: name, value; optional: category)\n- update: Update variable (requires: variable_id; optional: name, value, category)\n- delete: Delete variable (requires: variable_id)\n- batch_create: Create multiple variables (requires: variables)\n- batch_delete: Delete multiple variables (requires: variable_ids; max 50)\n- search: Search variables by name/value (optional: query, value_query, category_id)", 'bricks-mcp' ),
 			array(
 				'type'       => 'object',
 				'properties' => array(
 					'action'        => array(
 						'type'        => 'string',
-						'enum'        => array( 'list', 'create_category', 'update_category', 'delete_category', 'create', 'update', 'delete', 'batch_create' ),
+						'enum'        => array( 'list', 'create_category', 'update_category', 'delete_category', 'create', 'update', 'delete', 'batch_create', 'batch_delete', 'search' ),
 						'description' => __( 'Action to perform', 'bricks-mcp' ),
 					),
 					'category_id'   => array(
 						'type'        => 'string',
-						'description' => __( 'Category ID (update_category, delete_category: required; create: optional)', 'bricks-mcp' ),
+						'description' => __( 'Category ID (update_category, delete_category: required; create: optional; search: optional filter)', 'bricks-mcp' ),
 					),
 					'category_name' => array(
 						'type'        => 'string',
@@ -1179,6 +1179,19 @@ final class Router {
 					'variables'     => array(
 						'type'        => 'array',
 						'description' => __( 'Array of {name, value} variable objects (batch_create: required)', 'bricks-mcp' ),
+					),
+					'variable_ids'  => array(
+						'type'        => 'array',
+						'description' => __( 'Array of variable ID strings (batch_delete: required; max 50)', 'bricks-mcp' ),
+						'items'       => array( 'type' => 'string' ),
+					),
+					'query'         => array(
+						'type'        => 'string',
+						'description' => __( 'Name substring to search for (search: optional, case-insensitive)', 'bricks-mcp' ),
+					),
+					'value_query'   => array(
+						'type'        => 'string',
+						'description' => __( 'Value substring to search for (search: optional, case-insensitive)', 'bricks-mcp' ),
 					),
 				),
 				'required'   => array( 'action' ),
@@ -4277,7 +4290,7 @@ final class Router {
 	}
 
 	/**
-	 * Tool: Global variable dispatcher — routes to list, create_category, update_category, delete_category, create, update, delete, batch_create.
+	 * Tool: Global variable dispatcher — routes to list, create_category, update_category, delete_category, create, update, delete, batch_create, batch_delete, search.
 	 *
 	 * @param array<string, mixed> $args Tool arguments including 'action'.
 	 * @return array<string, mixed>|\WP_Error Result data or error.
@@ -4289,8 +4302,7 @@ final class Router {
 		}
 
 		$action        = $args['action'] ?? '';
-		$write_actions = array( 'create_category', 'update_category', 'delete_category', 'create', 'update', 'delete', 'batch_create' );
-
+		$write_actions = array( 'create_category', 'update_category', 'delete_category', 'create', 'update', 'delete', 'batch_create', 'batch_delete' );
 
 		// Map 'category_name' to 'name' for category handlers.
 		if ( isset( $args['category_name'] ) && ! isset( $args['name'] ) ) {
@@ -4311,11 +4323,13 @@ final class Router {
 			'update'          => $this->tool_update_global_variable( $args ),
 			'delete'          => $this->tool_delete_global_variable( $args ),
 			'batch_create'    => $this->tool_batch_create_global_variables( $args ),
+			'batch_delete'    => $this->tool_batch_delete_global_variables( $args ),
+			'search'          => $this->tool_search_global_variables( $args ),
 			default           => new \WP_Error(
 				'invalid_action',
 				sprintf(
 					/* translators: %s: Action name */
-					__( 'Invalid action "%s". Valid actions: list, create_category, update_category, delete_category, create, update, delete, batch_create', 'bricks-mcp' ),
+					__( 'Invalid action "%s". Valid actions: list, create_category, update_category, delete_category, create, update, delete, batch_create, batch_delete, search', 'bricks-mcp' ),
 					$action
 				)
 			),
@@ -6548,6 +6562,36 @@ final class Router {
 			$args['variables'],
 			$args['category_id'] ?? ''
 		);
+	}
+
+	/**
+	 * Handler: Batch delete global variables.
+	 *
+	 * @param array<string, mixed> $args Tool arguments.
+	 * @return array<string, mixed>|\WP_Error Result or error.
+	 */
+	private function tool_batch_delete_global_variables( array $args ): array|\WP_Error {
+		$variable_ids = $args['variable_ids'] ?? [];
+
+		if ( empty( $variable_ids ) || ! is_array( $variable_ids ) ) {
+			return new \WP_Error( 'missing_variable_ids', __( 'variable_ids array is required with at least one variable ID string.', 'bricks-mcp' ) );
+		}
+
+		return $this->bricks_service->batch_delete_global_variables( $variable_ids );
+	}
+
+	/**
+	 * Handler: Search global variables by name/value/category.
+	 *
+	 * @param array<string, mixed> $args Tool arguments.
+	 * @return array<string, mixed> Search results.
+	 */
+	private function tool_search_global_variables( array $args ): array {
+		$name        = $args['query'] ?? '';
+		$value       = $args['value_query'] ?? '';
+		$category_id = $args['category_id'] ?? '';
+
+		return $this->bricks_service->search_global_variables( $name, $value, $category_id );
 	}
 
 	/**
