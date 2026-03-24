@@ -724,53 +724,73 @@ final class Router {
 		// Element consolidated tool (replaces add_element, update_element, remove_element).
 		$this->register_tool(
 			'element',
-			__( "Manage individual Bricks elements on a page.\n\nActions:\n- add: Add element to page (requires: post_id, name; optional: parent_id, position, settings)\n- update: Update element settings (requires: post_id, element_id, settings)\n- remove: Remove element from page (requires: post_id, element_id)\n- get_conditions: Get element visibility conditions (requires: post_id, element_id)\n- set_conditions: Set element visibility conditions (requires: post_id, element_id, conditions)", 'bricks-mcp' ),
+			__( "Manage individual Bricks elements on a page.\n\nActions:\n- add: Add element to page (requires: post_id, name; optional: parent_id, position, settings)\n- update: Update element settings (requires: post_id, element_id, settings)\n- remove: Remove element from page (requires: post_id, element_id)\n- get_conditions: Get element visibility conditions (requires: post_id, element_id)\n- set_conditions: Set element visibility conditions (requires: post_id, element_id, conditions)\n- move: Move/reorder element within page (requires: post_id, element_id; optional: target_parent_id, position)\n- bulk_update: Update settings on multiple elements (requires: post_id, updates)", 'bricks-mcp' ),
 			array(
 				'type'       => 'object',
 				'properties' => array(
-					'action'     => array(
+					'action'           => array(
 						'type'        => 'string',
-						'enum'        => array( 'add', 'update', 'remove', 'get_conditions', 'set_conditions' ),
+						'enum'        => array( 'add', 'update', 'remove', 'get_conditions', 'set_conditions', 'move', 'bulk_update' ),
 						'description' => __( 'Action to perform', 'bricks-mcp' ),
 					),
-					'post_id'    => array(
+					'post_id'          => array(
 						'type'        => 'integer',
 						'description' => __( 'Post/page ID (all actions: required)', 'bricks-mcp' ),
 					),
-					'element'    => array(
+					'element'          => array(
 						'type'        => 'object',
 						'description' => __( 'Element object with name and optional settings (add: used as source for element data)', 'bricks-mcp' ),
 					),
-					'name'       => array(
+					'name'             => array(
 						'type'        => 'string',
 						'description' => __( "Bricks element type name (add: required, e.g. 'heading', 'container', 'section')", 'bricks-mcp' ),
 					),
-					'element_id' => array(
+					'element_id'       => array(
 						'type'        => 'string',
-						'description' => __( 'Element ID (update, remove: required; 6-char alphanumeric)', 'bricks-mcp' ),
+						'description' => __( 'Element ID (update, remove, move: required; 6-char alphanumeric)', 'bricks-mcp' ),
 					),
-					'settings'   => array(
+					'settings'         => array(
 						'type'        => 'object',
 						'description' => __( 'Element settings (add: optional, update: required)', 'bricks-mcp' ),
 					),
-					'position'   => array(
+					'position'         => array(
 						'type'        => 'integer',
-						'description' => __( "Position in parent's children array (add: 0-indexed, omit to append)", 'bricks-mcp' ),
+						'description' => __( "Position in parent's children array (add, move: 0-indexed, omit to append)", 'bricks-mcp' ),
 					),
-					'parent_id'   => array(
+					'parent_id'        => array(
 						'type'        => 'string',
 						'description' => __( "Parent element ID (add: optional, use '0' for root level)", 'bricks-mcp' ),
 					),
-					'conditions'  => array(
+					'conditions'       => array(
 						'type'        => 'array',
 						'description' => __( 'Condition sets array — array of arrays of condition objects with key/compare/value (set_conditions: required)', 'bricks-mcp' ),
+					),
+					'target_parent_id' => array(
+						'type'        => 'string',
+						'description' => __( "Target parent element ID for move (move: optional; use '0' for root level, omit to reorder within current parent)", 'bricks-mcp' ),
+					),
+					'updates'          => array(
+						'type'        => 'array',
+						'description' => __( 'Array of {element_id, settings} objects (bulk_update: required; max 50 items)', 'bricks-mcp' ),
+						'items'       => array(
+							'type'       => 'object',
+							'properties' => array(
+								'element_id' => array(
+									'type'        => 'string',
+									'description' => __( 'Element ID to update', 'bricks-mcp' ),
+								),
+								'settings'   => array(
+									'type'        => 'object',
+									'description' => __( 'Settings to merge', 'bricks-mcp' ),
+								),
+							),
+						),
 					),
 				),
 				'required'   => array( 'action' ),
 			),
 			array( $this, 'tool_element' )
 		);
-
 
 		// Template consolidated tool (replaces list_templates, get_template_content, create_template, update_template, delete_template, duplicate_template).
 		$this->register_tool(
@@ -3092,8 +3112,7 @@ final class Router {
 		}
 
 		$action        = $args['action'] ?? '';
-		$write_actions = array( 'add', 'update', 'remove', 'set_conditions' );
-
+		$write_actions = array( 'add', 'update', 'remove', 'set_conditions', 'move', 'bulk_update' );
 
 		return match ( $action ) {
 			'add'            => $this->tool_add_element( $args ),
@@ -3101,11 +3120,13 @@ final class Router {
 			'remove'         => $this->tool_remove_element( $args ),
 			'get_conditions' => $this->tool_get_conditions( $args ),
 			'set_conditions' => $this->tool_set_conditions( $args ),
+			'move'           => $this->tool_move_element( $args ),
+			'bulk_update'    => $this->tool_bulk_update_elements( $args ),
 			default          => new \WP_Error(
 				'invalid_action',
 				sprintf(
 					/* translators: %s: Action name */
-					__( 'Invalid action "%s". Valid actions: add, update, remove, get_conditions, set_conditions', 'bricks-mcp' ),
+					__( 'Invalid action "%s". Valid actions: add, update, remove, get_conditions, set_conditions, move, bulk_update', 'bricks-mcp' ),
 					$action
 				)
 			),
@@ -3558,6 +3579,48 @@ final class Router {
 		$element_id = sanitize_text_field( $args['element_id'] );
 
 		return $this->bricks_service->remove_element( $post_id, $element_id );
+	}
+
+	/**
+	 * Tool: Move or reorder element within page.
+	 *
+	 * @param array<string, mixed> $args Tool arguments.
+	 * @return array<string, mixed>|\WP_Error Result or error.
+	 */
+	private function tool_move_element( array $args ): array|\WP_Error {
+		$post_id          = (int) ( $args['post_id'] ?? 0 );
+		$element_id       = $args['element_id'] ?? '';
+		$target_parent_id = $args['target_parent_id'] ?? '';
+		$position         = isset( $args['position'] ) ? (int) $args['position'] : null;
+
+		if ( 0 === $post_id ) {
+			return new \WP_Error( 'missing_post_id', __( 'post_id is required.', 'bricks-mcp' ) );
+		}
+		if ( '' === $element_id ) {
+			return new \WP_Error( 'missing_element_id', __( 'element_id is required.', 'bricks-mcp' ) );
+		}
+
+		return $this->bricks_service->move_element( $post_id, $element_id, $target_parent_id, $position );
+	}
+
+	/**
+	 * Tool: Bulk update element settings.
+	 *
+	 * @param array<string, mixed> $args Tool arguments.
+	 * @return array<string, mixed>|\WP_Error Result or error.
+	 */
+	private function tool_bulk_update_elements( array $args ): array|\WP_Error {
+		$post_id = (int) ( $args['post_id'] ?? 0 );
+		$updates = $args['updates'] ?? [];
+
+		if ( 0 === $post_id ) {
+			return new \WP_Error( 'missing_post_id', __( 'post_id is required.', 'bricks-mcp' ) );
+		}
+		if ( empty( $updates ) || ! is_array( $updates ) ) {
+			return new \WP_Error( 'missing_updates', __( 'updates array is required with at least one {element_id, settings} object.', 'bricks-mcp' ) );
+		}
+
+		return $this->bricks_service->bulk_update_elements( $post_id, $updates );
 	}
 
 	/**
