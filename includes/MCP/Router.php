@@ -7558,12 +7558,15 @@ final class Router {
 		$id_generator = new ElementIdGenerator();
 		$instance_id  = $id_generator->generate_unique( $elements );
 
+		// Normalize root-level parent: string '0' → integer 0 (validate_element_linkage uses strict comparison).
+		$parent = '0' !== $parent_id ? $parent_id : 0;
+
 		// Build instance element.
 		$instance_element = array(
 			'id'           => $instance_id,
 			'name'         => $component_id,
 			'cid'          => $component_id,
-			'parent'       => $parent_id,
+			'parent'       => $parent,
 			'children'     => array(),
 			'settings'     => array(),
 			'properties'   => isset( $args['properties'] ) && is_array( $args['properties'] ) ? $args['properties'] : array(),
