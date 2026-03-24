@@ -3394,7 +3394,7 @@ final class Router {
 			return new \WP_Error(
 				'post_not_found',
 				/* translators: %d: Post ID */
-				sprintf( __( 'Post %d not found. Verify the post_id and try again.', 'bricks-mcp' ), $post_id )
+				sprintf( __( 'Post %d not found. Use list_pages to find valid post IDs.', 'bricks-mcp' ), $post_id )
 			);
 		}
 
@@ -3663,7 +3663,7 @@ final class Router {
 				'post_not_found',
 				sprintf(
 					/* translators: %d: Post ID */
-					__( 'Post %d not found.', 'bricks-mcp' ),
+					__( 'Post %d not found. Use list_pages to find valid post IDs.', 'bricks-mcp' ),
 					$post_id
 				)
 			);
@@ -3745,7 +3745,7 @@ final class Router {
 				'post_not_found',
 				sprintf(
 					/* translators: %d: Post ID */
-					__( 'Post %d not found.', 'bricks-mcp' ),
+					__( 'Post %d not found. Use list_pages to find valid post IDs.', 'bricks-mcp' ),
 					$post_id
 				)
 			);
