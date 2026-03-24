@@ -3,7 +3,7 @@ Contributors: cristianuibar
 Tags: ai, bricks builder, mcp, artificial intelligence, page builder
 Requires at least: 6.4
 Tested up to: 6.8
-Stable tag: 1.3.0
+Stable tag: 1.4.0
 Requires PHP: 8.2
 License: GPL-2.0-or-later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -106,6 +106,17 @@ Yes, when configured correctly. The plugin enforces WordPress Application Passwo
 3. An AI assistant creating a Bricks Builder hero section from a plain-text prompt.
 
 == Changelog ==
+
+= 1.4.0 =
+* New: Connection diagnostics system — 9 automated checks detect what's blocking MCP API endpoints or App Passwords.
+* New: Diagnostic panel on MCP Settings page replaces Test Connection button with richer output and fix instructions.
+* New: WP Site Health integration — 3 Bricks MCP checks appear in Tools > Site Health.
+* New: Plugin activation checks — lightweight PHP-only checks run on activate and surface issues as admin notices.
+* New: MCP `get_site_info(action: 'diagnose')` returns structured JSON diagnostics for AI agents.
+* New: Hosting provider detection (WP Engine, Kinsta, Flywheel, Cloudways, GoDaddy, SiteGround, Pantheon) with provider-specific fix instructions.
+* New: Security plugin compatibility detection (Wordfence, iThemes, Sucuri, AIOS, WP Cerber, Perfmatters, Shield).
+* New: Dependency-ordered check execution — checks skip automatically when prerequisites fail.
+* New: Connection Troubleshooting section in Builder Guide for AI-assisted troubleshooting.
 
 = 1.3.0 =
 * New: Add MCP instructions field to initialize response to guide AI clients on available tools.

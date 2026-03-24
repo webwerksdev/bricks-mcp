@@ -62,3 +62,7 @@ test-all-tools.sh
 phase6-plugin-row-notice.png
 tests/auto_uat_phase8.py
 *:Zone.Identifier
+
+# Bricks Builder source (for reference only)
+bricks.2.3.zip
+bricks-2.3-source/
