@@ -550,7 +550,7 @@ final class Router {
 				'properties' => array(
 					'section' => array(
 						'type'        => 'string',
-						'enum'        => array( 'all', 'settings', 'animations', 'interactions', 'dynamic_data', 'forms', 'components', 'popups', 'element_conditions', 'woocommerce', 'seo', 'custom_code', 'fonts', 'import_export', 'workflows', 'gotchas' ),
+						'enum'        => array( 'all', 'settings', 'animations', 'interactions', 'dynamic_data', 'forms', 'components', 'popups', 'element_conditions', 'woocommerce', 'seo', 'custom_code', 'fonts', 'import_export', 'workflows', 'gotchas', 'connection_troubleshooting' ),
 						'description' => __( 'Optional: return only a specific section of the guide. Use "woocommerce" for WooCommerce, "seo" for SEO optimization, "custom_code" for custom code, "fonts" for font management, "import_export" for import/export. Defaults to all.', 'bricks-mcp' ),
 					),
 				),
