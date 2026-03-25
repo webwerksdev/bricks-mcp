@@ -1550,7 +1550,6 @@ final class Router {
 		}
 
 		$action        = $args['action'] ?? '';
-		$write_actions = array( 'enable', 'disable', 'set_global_query', 'delete_global_query' );
 
 
 		return match ( $action ) {
@@ -3070,7 +3069,6 @@ final class Router {
 		}
 
 		$action        = $args['action'] ?? '';
-		$write_actions = array( 'create', 'update_content', 'update_meta', 'delete', 'duplicate', 'update_settings', 'update_seo' );
 
 
 		// Map 'search' param alias: the schema uses 'search' but tool_search_pages reads 'query'.
@@ -3125,7 +3123,6 @@ final class Router {
 		}
 
 		$action        = $args['action'] ?? '';
-		$write_actions = array( 'add', 'update', 'remove', 'set_conditions', 'move', 'bulk_update' );
 
 		return match ( $action ) {
 			'add'            => $this->tool_add_element( $args ),
@@ -3922,7 +3919,6 @@ final class Router {
 		}
 
 		$action        = $args['action'] ?? '';
-		$write_actions = array( 'create', 'update', 'delete', 'duplicate', 'set_popup_settings', 'import', 'import_url' );
 
 
 		return match ( $action ) {
@@ -4066,7 +4062,6 @@ final class Router {
 		}
 
 		$action        = $args['action'] ?? '';
-		$write_actions = array( 'set' );
 
 
 		return match ( $action ) {
@@ -4097,7 +4092,6 @@ final class Router {
 		}
 
 		$action        = $args['action'] ?? '';
-		$write_actions = array( 'create_tag', 'create_bundle', 'delete_tag', 'delete_bundle' );
 
 
 		return match ( $action ) {
@@ -4131,7 +4125,6 @@ final class Router {
 		}
 
 		$action        = $args['action'] ?? '';
-		$write_actions = array( 'create', 'update', 'delete', 'apply', 'remove', 'batch_create', 'batch_delete', 'import_css', 'create_category', 'delete_category', 'import_json' );
 
 
 		// Param aliasing: category_name -> name for create_category handler.
@@ -4183,8 +4176,6 @@ final class Router {
 		}
 
 		$action        = $args['action'] ?? '';
-		$write_actions = array( 'create', 'update', 'delete' );
-
 
 		// Map 'name' param to 'label' for theme style handlers that expect 'label'.
 		if ( isset( $args['name'] ) && ! isset( $args['label'] ) ) {
@@ -4221,7 +4212,6 @@ final class Router {
 		}
 
 		$action        = $args['action'] ?? '';
-		$write_actions = array( 'create', 'update', 'delete' );
 
 
 		// Map 'scale_id' param to 'category_id' for handlers that expect 'category_id'.
@@ -4258,7 +4248,6 @@ final class Router {
 		}
 
 		$action        = $args['action'] ?? '';
-		$write_actions = array( 'create', 'update', 'delete', 'add_color', 'update_color', 'delete_color' );
 
 
 		// Map consolidated 'color' object to flat params for underlying handlers.
@@ -4302,7 +4291,6 @@ final class Router {
 		}
 
 		$action        = $args['action'] ?? '';
-		$write_actions = array( 'create_category', 'update_category', 'delete_category', 'create', 'update', 'delete', 'batch_create', 'batch_delete' );
 
 		// Map 'category_name' to 'name' for category handlers.
 		if ( isset( $args['category_name'] ) && ! isset( $args['name'] ) ) {
@@ -4349,7 +4337,6 @@ final class Router {
 		}
 
 		$action        = $args['action'] ?? '';
-		$write_actions = array( 'sideload', 'set_featured', 'remove_featured' );
 
 
 		// Map 'image_size' to 'size' for get_image_settings handler.
@@ -4383,7 +4370,6 @@ final class Router {
 	 */
 	public function tool_menu( array $args ): array|\WP_Error {
 		$action = $args['action'] ?? '';
-		$write_actions = array( 'create', 'update', 'delete', 'set_items', 'assign', 'unassign' );
 
 
 		return match ( $action ) {
@@ -5479,7 +5465,6 @@ final class Router {
 		}
 
 		$action        = $args['action'] ?? '';
-		$write_actions = array( 'update_settings' );
 
 
 		return match ( $action ) {
@@ -5561,7 +5546,6 @@ final class Router {
 		}
 
 		$action        = $args['action'] ?? '';
-		$write_actions = array( 'set_page_css', 'set_page_scripts' );
 
 
 		if ( 'set_page_scripts' === $action ) {
@@ -7248,7 +7232,6 @@ final class Router {
 		}
 
 		$action        = $args['action'] ?? '';
-		$write_actions = array( 'create', 'update', 'delete', 'instantiate', 'update_properties', 'fill_slot' );
 
 
 		return match ( $action ) {
@@ -8140,7 +8123,6 @@ final class Router {
 		}
 
 		$action        = $args['action'] ?? '';
-		$write_actions = array( 'scaffold_template', 'scaffold_store' );
 
 
 		return match ( $action ) {
