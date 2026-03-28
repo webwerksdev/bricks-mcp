@@ -168,12 +168,15 @@ final class Server {
 					[ 'status' => 403 ]
 				);
 			}
+		}
 
-			// Rate limit authenticated users.
-			$rate_check = RateLimiter::check( get_current_user_id() );
-			if ( is_wp_error( $rate_check ) ) {
-				return $rate_check;
-			}
+		// Rate limit all requests (authenticated by user ID, anonymous by IP).
+		$identifier = is_user_logged_in()
+			? 'user_' . get_current_user_id()
+			: 'ip_' . ( $_SERVER['REMOTE_ADDR'] ?? 'unknown' );
+		$rate_check = RateLimiter::check( $identifier );
+		if ( is_wp_error( $rate_check ) ) {
+			return $rate_check;
 		}
 
 		return true;
