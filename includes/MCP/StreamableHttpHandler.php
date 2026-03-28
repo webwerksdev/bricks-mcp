@@ -73,6 +73,13 @@ final class StreamableHttpHandler {
 	public const MAX_BATCH_SIZE = 20;
 
 	/**
+	 * Maximum allowed request body size in bytes (1 MB).
+	 *
+	 * @var int
+	 */
+	public const MAX_BODY_SIZE = 1048576;
+
+	/**
 	 * Router instance.
 	 *
 	 * @var Router
@@ -111,8 +118,18 @@ final class StreamableHttpHandler {
 			exit;
 		}
 
+		// Check body size before parsing.
+		$body = $request->get_body();
+		if ( strlen( $body ) > self::MAX_BODY_SIZE ) {
+			status_header( 413 );
+			header( 'Content-Type: application/json' );
+			echo wp_json_encode(
+				$this->jsonrpc_error( null, self::INVALID_REQUEST, 'Request body too large' )
+			);
+			exit;
+		}
+
 		// Decode JSON body.
-		$body    = $request->get_body();
 		$decoded = json_decode( $body, true );
 
 		// Handle JSON parse errors.
