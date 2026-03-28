@@ -13,6 +13,11 @@ namespace BricksMCP\Tests\Unit\MCP;
 use PHPUnit\Framework\TestCase;
 use BricksMCP\MCP\RateLimiter;
 
+// ---------------------------------------------------------------------------
+// WordPress function stubs — only defined when WordPress is NOT loaded.
+// These allow the test suite to run with bootstrap-simple.php (no WP env).
+// ---------------------------------------------------------------------------
+
 /**
  * Fake in-process object cache used by stubs below.
  *
@@ -28,22 +33,19 @@ $GLOBALS['_bricks_mcp_test_cache'] = [];
 $GLOBALS['_bricks_mcp_test_settings'] = [];
 
 /**
- * Controls which code path is exercised: true = persistent cache, false = transient fallback.
+ * Controls which code path is exercised when WordPress is NOT loaded.
+ * When WordPress IS loaded, use wp_using_ext_object_cache() directly.
  *
  * @var bool
  */
 $GLOBALS['_bricks_mcp_test_ext_object_cache'] = true;
 
 /**
- * Fake transient store for the transient fallback path.
+ * Fake transient store for the transient fallback path (no-WP stub only).
  *
  * @var array<string, mixed>
  */
 $GLOBALS['_bricks_mcp_test_transients'] = [];
-
-// ---------------------------------------------------------------------------
-// WordPress function stubs — only defined when WordPress is NOT loaded.
-// ---------------------------------------------------------------------------
 
 if ( ! function_exists( 'get_option' ) ) {
 	/**
@@ -58,6 +60,22 @@ if ( ! function_exists( 'get_option' ) ) {
 			return $GLOBALS['_bricks_mcp_test_settings'];
 		}
 		return $default;
+	}
+}
+
+if ( ! function_exists( 'update_option' ) ) {
+	/**
+	 * Stub for update_option().
+	 *
+	 * @param string $option Option name.
+	 * @param mixed  $value  Value.
+	 * @return bool
+	 */
+	function update_option( string $option, mixed $value ): bool {
+		if ( 'bricks_mcp_settings' === $option ) {
+			$GLOBALS['_bricks_mcp_test_settings'] = $value;
+		}
+		return true;
 	}
 }
 
@@ -97,6 +115,61 @@ if ( ! function_exists( 'wp_cache_incr' ) ) {
 		}
 		$GLOBALS['_bricks_mcp_test_cache'][ $full_key ] += $offset;
 		return $GLOBALS['_bricks_mcp_test_cache'][ $full_key ];
+	}
+}
+
+if ( ! function_exists( 'wp_using_ext_object_cache' ) ) {
+	/**
+	 * Stub for wp_using_ext_object_cache().
+	 *
+	 * @param bool|null $using Optional new value to set.
+	 * @return bool
+	 */
+	function wp_using_ext_object_cache( ?bool $using = null ): bool {
+		if ( null !== $using ) {
+			$GLOBALS['_bricks_mcp_test_ext_object_cache'] = $using;
+		}
+		return (bool) $GLOBALS['_bricks_mcp_test_ext_object_cache'];
+	}
+}
+
+if ( ! function_exists( 'get_transient' ) ) {
+	/**
+	 * Stub for get_transient().
+	 *
+	 * @param string $transient Transient key.
+	 * @return mixed False if not set, stored value otherwise.
+	 */
+	function get_transient( string $transient ): mixed {
+		return $GLOBALS['_bricks_mcp_test_transients'][ $transient ] ?? false;
+	}
+}
+
+if ( ! function_exists( 'set_transient' ) ) {
+	/**
+	 * Stub for set_transient().
+	 *
+	 * @param string $transient  Transient key.
+	 * @param mixed  $value      Value to store.
+	 * @param int    $expiration TTL in seconds (ignored in stub).
+	 * @return bool
+	 */
+	function set_transient( string $transient, mixed $value, int $expiration = 0 ): bool {
+		$GLOBALS['_bricks_mcp_test_transients'][ $transient ] = $value;
+		return true;
+	}
+}
+
+if ( ! function_exists( 'delete_transient' ) ) {
+	/**
+	 * Stub for delete_transient().
+	 *
+	 * @param string $transient Transient key.
+	 * @return bool
+	 */
+	function delete_transient( string $transient ): bool {
+		unset( $GLOBALS['_bricks_mcp_test_transients'][ $transient ] );
+		return true;
 	}
 }
 
@@ -162,64 +235,13 @@ if ( ! function_exists( 'header' ) ) {
 	/**
 	 * Stub for header() — silently discards headers in unit tests.
 	 *
-	 * @param string $header     The header string.
-	 * @param bool   $replace    Whether to replace a previous similar header.
+	 * @param string $header       The header string.
+	 * @param bool   $replace      Whether to replace a previous similar header.
 	 * @param int    $response_code Optional HTTP response code.
 	 * @return void
 	 */
 	function header( string $header, bool $replace = true, int $response_code = 0 ): void {
 		// No-op in unit tests.
-	}
-}
-
-if ( ! function_exists( 'wp_using_ext_object_cache' ) ) {
-	/**
-	 * Stub for wp_using_ext_object_cache().
-	 *
-	 * @return bool
-	 */
-	function wp_using_ext_object_cache(): bool {
-		return (bool) $GLOBALS['_bricks_mcp_test_ext_object_cache'];
-	}
-}
-
-if ( ! function_exists( 'get_transient' ) ) {
-	/**
-	 * Stub for get_transient().
-	 *
-	 * @param string $transient Transient key.
-	 * @return mixed False if not set, stored value otherwise.
-	 */
-	function get_transient( string $transient ): mixed {
-		return $GLOBALS['_bricks_mcp_test_transients'][ $transient ] ?? false;
-	}
-}
-
-if ( ! function_exists( 'set_transient' ) ) {
-	/**
-	 * Stub for set_transient().
-	 *
-	 * @param string $transient  Transient key.
-	 * @param mixed  $value      Value to store.
-	 * @param int    $expiration TTL in seconds (ignored in stub).
-	 * @return bool
-	 */
-	function set_transient( string $transient, mixed $value, int $expiration = 0 ): bool {
-		$GLOBALS['_bricks_mcp_test_transients'][ $transient ] = $value;
-		return true;
-	}
-}
-
-if ( ! function_exists( 'delete_transient' ) ) {
-	/**
-	 * Stub for delete_transient().
-	 *
-	 * @param string $transient Transient key.
-	 * @return bool
-	 */
-	function delete_transient( string $transient ): bool {
-		unset( $GLOBALS['_bricks_mcp_test_transients'][ $transient ] );
-		return true;
 	}
 }
 
@@ -242,55 +264,156 @@ if ( ! function_exists( '__' ) ) {
 final class RateLimiterTest extends TestCase {
 
 	/**
-	 * Reset fake cache and settings before each test.
+	 * Whether WordPress is loaded (affects setUp/tearDown behavior).
+	 *
+	 * @var bool
+	 */
+	private bool $wp_loaded;
+
+	/**
+	 * Original ext object cache state (for restoration when WP is loaded).
+	 *
+	 * @var bool|null
+	 */
+	private ?bool $original_ext_cache_state = null;
+
+	/**
+	 * Unique identifier prefix to avoid transient collisions between tests.
+	 *
+	 * @var string
+	 */
+	private string $test_id;
+
+	/**
+	 * Reset state before each test.
 	 *
 	 * @return void
 	 */
 	protected function setUp(): void {
 		parent::setUp();
-		$GLOBALS['_bricks_mcp_test_cache']             = [];
-		$GLOBALS['_bricks_mcp_test_settings']          = [];
-		$GLOBALS['_bricks_mcp_test_ext_object_cache']  = true;
-		$GLOBALS['_bricks_mcp_test_transients']        = [];
+
+		$this->wp_loaded = function_exists( 'wp_cache_flush' ) && defined( 'ABSPATH' ) && function_exists( 'get_option' ) && class_exists( 'wpdb' );
+		$this->test_id   = uniqid( 'test_', true );
+
+		if ( $this->wp_loaded ) {
+			// Real WP environment: flush cache and store current ext cache state.
+			$this->original_ext_cache_state = (bool) wp_using_ext_object_cache();
+			wp_cache_flush();
+			// Default to persistent cache path (mirrors production default for most tests).
+			wp_using_ext_object_cache( true );
+			update_option( 'bricks_mcp_settings', [] );
+		} else {
+			// Stub environment: reset fake stores.
+			$GLOBALS['_bricks_mcp_test_cache']            = [];
+			$GLOBALS['_bricks_mcp_test_settings']         = [];
+			$GLOBALS['_bricks_mcp_test_ext_object_cache'] = true;
+			$GLOBALS['_bricks_mcp_test_transients']       = [];
+		}
 	}
 
 	/**
-	 * Test 1: check() with an IP-based identifier returns true when under limit.
+	 * Restore original state after each test.
+	 *
+	 * @return void
+	 */
+	protected function tearDown(): void {
+		parent::tearDown();
+
+		if ( $this->wp_loaded ) {
+			wp_using_ext_object_cache( $this->original_ext_cache_state ?? false );
+			wp_cache_flush();
+			// Delete any transients created during this test.
+			global $wpdb;
+			$wpdb->query( "DELETE FROM {$wpdb->options} WHERE option_name LIKE '_transient_bricks_mcp_rl_%'" );
+		} else {
+			$GLOBALS['_bricks_mcp_test_cache']            = [];
+			$GLOBALS['_bricks_mcp_test_settings']         = [];
+			$GLOBALS['_bricks_mcp_test_ext_object_cache'] = true;
+			$GLOBALS['_bricks_mcp_test_transients']       = [];
+		}
+	}
+
+	/**
+	 * Helper: set rate limit RPM (works in both WP and stub environments).
+	 *
+	 * @param int $rpm Requests per minute limit.
+	 * @return void
+	 */
+	private function set_rate_limit( int $rpm ): void {
+		if ( $this->wp_loaded ) {
+			update_option( 'bricks_mcp_settings', [ 'rate_limit_rpm' => $rpm ] );
+		} else {
+			$GLOBALS['_bricks_mcp_test_settings'] = [ 'rate_limit_rpm' => $rpm ];
+		}
+	}
+
+	/**
+	 * Helper: force transient fallback path (works in both environments).
+	 *
+	 * @return void
+	 */
+	private function use_transient_path(): void {
+		if ( $this->wp_loaded ) {
+			wp_using_ext_object_cache( false );
+		} else {
+			$GLOBALS['_bricks_mcp_test_ext_object_cache'] = false;
+		}
+	}
+
+	/**
+	 * Helper: force persistent cache path (works in both environments).
+	 *
+	 * @return void
+	 */
+	private function use_cache_path(): void {
+		if ( $this->wp_loaded ) {
+			wp_using_ext_object_cache( true );
+		} else {
+			$GLOBALS['_bricks_mcp_test_ext_object_cache'] = true;
+		}
+	}
+
+	/**
+	 * Test 1: check() with an IP-based identifier returns true when under limit (persistent cache path).
 	 *
 	 * @return void
 	 */
 	public function test_check_ip_identifier_under_limit_returns_true(): void {
-		$result = RateLimiter::check( 'ip_192.168.1.1' );
+		$this->use_cache_path();
+
+		$result = RateLimiter::check( 'ip_192.168.1.1_' . $this->test_id );
 
 		$this->assertTrue( $result );
 	}
 
 	/**
-	 * Test 2: check() with a user-based identifier returns true when under limit.
+	 * Test 2: check() with a user-based identifier returns true when under limit (persistent cache path).
 	 *
 	 * @return void
 	 */
 	public function test_check_user_identifier_under_limit_returns_true(): void {
-		$result = RateLimiter::check( 'user_42' );
+		$this->use_cache_path();
+
+		$result = RateLimiter::check( 'user_42_' . $this->test_id );
 
 		$this->assertTrue( $result );
 	}
 
 	/**
-	 * Test 3: check() returns WP_Error with status 429 after exceeding rate_limit_rpm.
+	 * Test 3: check() returns WP_Error with status 429 after exceeding rate_limit_rpm (persistent cache path).
 	 *
 	 * @return void
 	 */
 	public function test_check_exceeds_limit_returns_wp_error_429(): void {
-		// Set a very low limit.
-		$GLOBALS['_bricks_mcp_test_settings'] = [ 'rate_limit_rpm' => 2 ];
+		$this->use_cache_path();
+		$this->set_rate_limit( 2 );
 
 		// First two calls should succeed.
-		$this->assertTrue( RateLimiter::check( 'ip_10.0.0.1' ) );
-		$this->assertTrue( RateLimiter::check( 'ip_10.0.0.1' ) );
+		$this->assertTrue( RateLimiter::check( 'ip_10.0.0.1_' . $this->test_id ) );
+		$this->assertTrue( RateLimiter::check( 'ip_10.0.0.1_' . $this->test_id ) );
 
 		// Third call exceeds the limit.
-		$result = RateLimiter::check( 'ip_10.0.0.1' );
+		$result = RateLimiter::check( 'ip_10.0.0.1_' . $this->test_id );
 
 		$this->assertInstanceOf( \WP_Error::class, $result );
 		$this->assertEquals( 'bricks_mcp_rate_limit', $result->get_error_code() );
@@ -298,23 +421,21 @@ final class RateLimiterTest extends TestCase {
 	}
 
 	/**
-	 * Test 4: Different identifiers maintain independent counters.
-	 *
-	 * Hitting the limit for 'ip_X' must not affect 'user_Y'.
+	 * Test 4: Different identifiers maintain independent counters (persistent cache path).
 	 *
 	 * @return void
 	 */
 	public function test_different_identifiers_have_independent_counters(): void {
-		// Set a very low limit.
-		$GLOBALS['_bricks_mcp_test_settings'] = [ 'rate_limit_rpm' => 1 ];
+		$this->use_cache_path();
+		$this->set_rate_limit( 1 );
 
 		// Exhaust ip_X's quota.
-		RateLimiter::check( 'ip_1.2.3.4' );
-		$ip_result = RateLimiter::check( 'ip_1.2.3.4' );
+		RateLimiter::check( 'ip_1.2.3.4_' . $this->test_id );
+		$ip_result = RateLimiter::check( 'ip_1.2.3.4_' . $this->test_id );
 		$this->assertInstanceOf( \WP_Error::class, $ip_result, 'ip_1.2.3.4 should be rate-limited' );
 
 		// user_Y's first request should still be allowed.
-		$user_result = RateLimiter::check( 'user_99' );
+		$user_result = RateLimiter::check( 'user_99_' . $this->test_id );
 		$this->assertTrue( $user_result, 'user_99 should not be affected by ip_1.2.3.4 limit' );
 	}
 
@@ -324,13 +445,16 @@ final class RateLimiterTest extends TestCase {
 	 * @return void
 	 */
 	public function test_transient_path_under_limit_returns_true(): void {
-		$GLOBALS['_bricks_mcp_test_ext_object_cache'] = false;
+		$this->use_transient_path();
 
-		$result = RateLimiter::check( 'user_10' );
+		$identifier = 'user_10_' . $this->test_id;
+		$result     = RateLimiter::check( $identifier );
 
 		$this->assertTrue( $result );
-		$this->assertArrayHasKey( 'bricks_mcp_rl_user_10', $GLOBALS['_bricks_mcp_test_transients'] );
-		$this->assertEquals( 1, $GLOBALS['_bricks_mcp_test_transients']['bricks_mcp_rl_user_10'] );
+
+		// Verify transient was written.
+		$stored = get_transient( 'bricks_mcp_rl_' . $identifier );
+		$this->assertEquals( 1, (int) $stored );
 	}
 
 	/**
@@ -339,15 +463,17 @@ final class RateLimiterTest extends TestCase {
 	 * @return void
 	 */
 	public function test_transient_path_exceeds_limit_returns_wp_error_429(): void {
-		$GLOBALS['_bricks_mcp_test_ext_object_cache'] = false;
-		$GLOBALS['_bricks_mcp_test_settings']         = [ 'rate_limit_rpm' => 2 ];
+		$this->use_transient_path();
+		$this->set_rate_limit( 2 );
+
+		$identifier = 'user_20_' . $this->test_id;
 
 		// First two calls should succeed.
-		$this->assertTrue( RateLimiter::check( 'user_20' ) );
-		$this->assertTrue( RateLimiter::check( 'user_20' ) );
+		$this->assertTrue( RateLimiter::check( $identifier ) );
+		$this->assertTrue( RateLimiter::check( $identifier ) );
 
 		// Third call exceeds the limit.
-		$result = RateLimiter::check( 'user_20' );
+		$result = RateLimiter::check( $identifier );
 
 		$this->assertInstanceOf( \WP_Error::class, $result );
 		$this->assertEquals( 'bricks_mcp_rate_limit', $result->get_error_code() );
@@ -360,16 +486,19 @@ final class RateLimiterTest extends TestCase {
 	 * @return void
 	 */
 	public function test_transient_path_independent_counters(): void {
-		$GLOBALS['_bricks_mcp_test_ext_object_cache'] = false;
-		$GLOBALS['_bricks_mcp_test_settings']         = [ 'rate_limit_rpm' => 1 ];
+		$this->use_transient_path();
+		$this->set_rate_limit( 1 );
+
+		$id_a = 'user_30_' . $this->test_id;
+		$id_b = 'user_31_' . $this->test_id;
 
 		// Exhaust identifier A's quota.
-		RateLimiter::check( 'user_30' );
-		$result_a = RateLimiter::check( 'user_30' );
+		RateLimiter::check( $id_a );
+		$result_a = RateLimiter::check( $id_a );
 		$this->assertInstanceOf( \WP_Error::class, $result_a, 'user_30 should be rate-limited' );
 
 		// Identifier B's first request should still succeed.
-		$result_b = RateLimiter::check( 'user_31' );
+		$result_b = RateLimiter::check( $id_b );
 		$this->assertTrue( $result_b, 'user_31 should not be affected by user_30 limit' );
 	}
 
@@ -379,13 +508,21 @@ final class RateLimiterTest extends TestCase {
 	 * @return void
 	 */
 	public function test_persistent_cache_path_does_not_write_transients(): void {
-		$GLOBALS['_bricks_mcp_test_ext_object_cache'] = true;
+		$this->use_cache_path();
 
-		RateLimiter::check( 'user_50' );
+		$identifier = 'user_50_' . $this->test_id;
+		RateLimiter::check( $identifier );
 
-		$this->assertEmpty(
-			$GLOBALS['_bricks_mcp_test_transients'],
-			'Transients must not be written when persistent object cache is active'
-		);
+		if ( $this->wp_loaded ) {
+			// In real WP: verify no transient was stored for this identifier.
+			$stored = get_transient( 'bricks_mcp_rl_' . $identifier );
+			$this->assertFalse( $stored, 'Transient must not be written when persistent object cache is active' );
+		} else {
+			// In stub environment: verify fake transient store is empty.
+			$this->assertEmpty(
+				$GLOBALS['_bricks_mcp_test_transients'],
+				'Transients must not be written when persistent object cache is active'
+			);
+		}
 	}
 }
