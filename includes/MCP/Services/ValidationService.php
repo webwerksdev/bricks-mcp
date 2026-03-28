@@ -285,7 +285,11 @@ class ValidationService {
 	 */
 	public function validate_arguments( array $arguments, array $input_schema, string $tool_name ): true|\WP_Error {
 		if ( ! class_exists( Validator::class ) ) {
-			return true;
+			return new \WP_Error(
+				'validation_unavailable',
+				__( 'Schema validation library is not available. Tool execution blocked for safety.', 'bricks-mcp' ),
+				[ 'status' => 500 ]
+			);
 		}
 
 		try {
@@ -297,7 +301,11 @@ class ValidationService {
 			$schema_json    = json_decode( (string) wp_json_encode( empty( $input_schema ) ? new \stdClass() : $input_schema ) );
 
 			if ( null === $arguments_json || null === $schema_json ) {
-				return true;
+				return new \WP_Error(
+					'validation_error',
+					__( 'Schema validation failed unexpectedly. Tool execution blocked for safety.', 'bricks-mcp' ),
+					[ 'status' => 500 ]
+				);
 			}
 
 			$result = $validator->validate( $arguments_json, $schema_json );
@@ -324,8 +332,11 @@ class ValidationService {
 				[ 'errors' => $formatted_errors ]
 			);
 		} catch ( \Throwable $e ) {
-			// If Opis validation itself throws, skip — don't block tool execution.
-			return true;
+			return new \WP_Error(
+				'validation_error',
+				__( 'Schema validation failed unexpectedly. Tool execution blocked for safety.', 'bricks-mcp' ),
+				[ 'status' => 500 ]
+			);
 		}
 	}
 
