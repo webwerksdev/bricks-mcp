@@ -117,15 +117,37 @@ add_filter( 'bricks_mcp_tools', function( $tools ) {
 
 ## Local Development
 
+Prerequisites: [Docker](https://docs.docker.com/get-docker/) and [Node.js](https://nodejs.org/) 18+.
+
 ```bash
+git clone https://github.com/buffupmedia/bricks-mcp.git
+cd bricks-mcp
 npm install
-npm run start        # Start WordPress (Docker via wp-env)
-npm run test         # Run PHPUnit tests
-npm run lint         # WordPress coding standards check
-npm run lint:fix     # Auto-fix linting issues
+npm run start
 ```
 
+That's it. The first start takes a few minutes to download WordPress and set up the containers. Composer dependencies are installed automatically inside the containers.
+
 Local site: http://localhost:8888 (admin / password)
+
+### Available Commands
+
+```bash
+npm run start        # Start WordPress environment (Docker via wp-env)
+npm run stop         # Stop the environment
+npm run test         # Run all PHPUnit tests
+npm run test:unit    # Run unit tests only
+npm run lint         # WordPress coding standards check
+npm run lint:fix     # Auto-fix linting issues
+npm run wp <command> # Run WP-CLI commands
+npm run logs:watch   # Tail the PHP debug log
+```
+
+### How It Works
+
+The dev environment uses [@wordpress/env](https://developer.wordpress.org/block-editor/reference-guides/packages/packages-env/) (wp-env), which runs WordPress in Docker containers. The plugin directory is mounted directly into the container, so file changes are reflected immediately.
+
+A [mu-plugin](mu-plugins/wp-env-fixes.php) is included to fix Docker networking quirks (REST API loopback and Application Passwords over HTTP).
 
 ## License
 

@@ -11,9 +11,10 @@
 		"WP_ENVIRONMENT_TYPE": "local"
 	},
 	"mappings": {
-		"wp-content/debug.log": "./logs/debug.log"
+		"wp-content/debug.log": "./logs/debug.log",
+		"wp-content/mu-plugins": "./mu-plugins"
 	},
 	"lifecycleScripts": {
-		"afterStart": "npx wp-env run cli wp plugin activate bricks-mcp"
+		"afterStart": "npx wp-env run cli composer install --working-dir=/var/www/html/wp-content/plugins/bricks-mcp && npx wp-env run tests-cli composer install --working-dir=/var/www/html/wp-content/plugins/bricks-mcp && npx wp-env run cli wp plugin activate bricks-mcp && npx wp-env run cli wp rewrite structure '/%postname%/'"
 	}
 }
