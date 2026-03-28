@@ -7018,7 +7018,7 @@ class BricksService {
 			);
 		}
 
-		$response = wp_remote_get(
+		$response = wp_safe_remote_get(
 			$url,
 			array(
 				'timeout' => 30,

@@ -270,6 +270,31 @@ if ( ! function_exists( 'get_the_post_thumbnail_url' ) ) {
 	}
 }
 
+if ( ! function_exists( 'wp_http_validate_url' ) ) {
+	function wp_http_validate_url( string $url ): string|false {
+		return $GLOBALS['_bricks_mcp_test_wp_http_validate_url_return'] ?? $url;
+	}
+}
+
+if ( ! function_exists( 'wp_safe_remote_get' ) ) {
+	function wp_safe_remote_get( string $url, array $args = [] ): array|\WP_Error {
+		$GLOBALS['_bricks_mcp_test_wp_safe_remote_get_calls'][] = [ 'url' => $url, 'args' => $args ];
+		return $GLOBALS['_bricks_mcp_test_wp_safe_remote_get_return'] ?? [];
+	}
+}
+
+if ( ! function_exists( 'wp_remote_retrieve_response_code' ) ) {
+	function wp_remote_retrieve_response_code( array|\WP_Error $response ): int|string {
+		return $response['response']['code'] ?? 200;
+	}
+}
+
+if ( ! function_exists( 'wp_remote_retrieve_body' ) ) {
+	function wp_remote_retrieve_body( array|\WP_Error $response ): string {
+		return $response['body'] ?? '';
+	}
+}
+
 if ( ! function_exists( 'current_user_can' ) ) {
 	function current_user_can( string $capability ): bool {
 		return $GLOBALS['_bricks_mcp_test_current_user_can'] ?? true;
