@@ -2,6 +2,20 @@
 /**
  * Bricks element schema generator service.
  *
+ * File: wp-content/plugins/bricks-mcp/includes/MCP/Services/SchemaGenerator.php
+ * Version: 2.0.0
+ *
+ * Changelog:
+ * 2.0.0 - 2026-03-28
+ *   - FIX: Replaced transient cache with wp_options non-autoloaded persistent cache.
+ *     Transients are wiped by WP Rocket/caching plugins; wp_options survives full cache flushes.
+ *   - FIX: Color schema corrected - Bricks colors are OBJECTS ({hex/raw/rgb}), never plain strings.
+ *   - FIX: Border radius/width schema corrected - values are CSS unit STRINGS, not integers.
+ *   - FIX: Typography color corrected to use color object schema.
+ *   - FIX: Background color corrected to use color object schema.
+ *   - ADDED: get_color_object_schema() helper for consistent color schema definitions.
+ *   - ADDED: Flush hooks for Bricks update and settings changes.
+ *
  * @package BricksMCP
  * @license GPL-2.0-or-later
  */
@@ -24,17 +38,20 @@ if ( ! defined( 'ABSPATH' ) ) {
 class SchemaGenerator {
 
 	/**
-	 * Cache key prefix for schema transients.
-	 *
-	 * Bricks version is appended to this prefix for cache invalidation.
-	 *
+	 * Cache option name prefix for schema storage (non-autoloaded wp_options).
+	 * Survives full object cache flushes by WP Rocket and similar plugins.
 	 * @var string
 	 */
-	private const CACHE_KEY_PREFIX = 'bricks_mcp_schemas_v';
+	private const CACHE_OPTION_PREFIX = 'bricks_mcp_schema_cache';
 
 	/**
-	 * Cache duration in seconds.
-	 *
+	 * Cache expiry option name.
+	 * @var string
+	 */
+	private const CACHE_EXPIRY_OPTION = 'bricks_mcp_schema_cache_expires';
+
+	/**
+	 * Cache duration in seconds (24 hours).
 	 * @var int
 	 */
 	private const CACHE_DURATION = DAY_IN_SECONDS;
@@ -53,10 +70,10 @@ class SchemaGenerator {
 			return [];
 		}
 
-		$cache_key = self::CACHE_KEY_PREFIX . $this->get_bricks_version();
-		$cached    = get_transient( $cache_key );
+		$cache_key = self::CACHE_OPTION_PREFIX . '_' . str_replace( '.', '_', $this->get_bricks_version() );
+		$cached    = $this->read_cache( $cache_key );
 
-		if ( false !== $cached && is_array( $cached ) ) {
+		if ( null !== $cached ) {
 			return $cached;
 		}
 
@@ -90,7 +107,7 @@ class SchemaGenerator {
 			];
 		}
 
-		set_transient( $cache_key, $schemas, self::CACHE_DURATION );
+		$this->write_cache( $cache_key, $schemas );
 
 		return $schemas;
 	}
@@ -405,14 +422,13 @@ class SchemaGenerator {
 		global $wpdb;
 
 		// Delete all transients matching our prefix pattern.
-		$prefix = '_transient_' . self::CACHE_KEY_PREFIX;
 		$wpdb->query( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 			$wpdb->prepare(
-				"DELETE FROM {$wpdb->options} WHERE option_name LIKE %s OR option_name LIKE %s",
-				$wpdb->esc_like( $prefix ) . '%',
-				$wpdb->esc_like( '_transient_timeout_' . self::CACHE_KEY_PREFIX ) . '%'
+				"DELETE FROM {$wpdb->options} WHERE option_name LIKE %s",
+				$wpdb->esc_like( self::CACHE_OPTION_PREFIX ) . '%'
 			)
 		);
+		delete_option( self::CACHE_EXPIRY_OPTION );
 	}
 
 	/**
@@ -454,14 +470,24 @@ class SchemaGenerator {
 				return $schema;
 
 			case 'color':
+				// Bricks color values are ALWAYS objects, never plain strings.
+				// Valid formats: {"hex":"#1E293B"}, {"raw":"var(--primary)"}, {"rgb":"rgba(30,41,59,0.8)"}
 				return [
-					'type'    => 'string',
-					'pattern' => '^(#[a-fA-F0-9]{3,8}|rgba?\(|hsla?\(|var\()',
+					'type'        => 'object',
+					'description' => 'Bricks color object. Use ONE key: {"hex":"#value"} for hex colors, {"raw":"var(--var)"} for CSS vars/keywords, or {"rgb":"rgba(...)"} for rgba.',
+					'properties'  => [
+						'hex' => [ 'type' => 'string', 'pattern' => '^#[0-9a-fA-F]{3,8}$' ],
+						'raw' => [ 'type' => 'string', 'description' => 'CSS variable or raw CSS color (e.g. "var(--primary)", "transparent")' ],
+						'rgb' => [ 'type' => 'string', 'description' => 'RGBA string (e.g. "rgba(30, 41, 59, 0.8)")' ],
+					],
 				];
 
 			case 'dimensions':
+				// All directional values are CSS unit strings (e.g. "20px", "var(--spacing)", "50%").
+				// NOT integers. Bricks does NOT auto-append "px" when values are set programmatically.
 				return [
-					'type'       => 'object',
+					'type'        => 'object',
+					'description' => 'All values are CSS unit strings (e.g. "20px", "var(--s)", "50%"). NOT integers.',
 					'properties' => [
 						'top'    => [ 'type' => 'string' ],
 						'right'  => [ 'type' => 'string' ],
@@ -472,16 +498,24 @@ class SchemaGenerator {
 
 			case 'typography':
 				return [
-					'type'       => 'object',
-					'properties' => [
-						'font-family'    => [ 'type' => 'string' ],
-						'font-size'      => [ 'type' => 'string' ],
-						'font-weight'    => [ 'type' => [ 'string', 'number' ] ],
-						'line-height'    => [ 'type' => 'string' ],
-						'letter-spacing' => [ 'type' => 'string' ],
-						'text-transform' => [ 'type' => 'string' ],
-						'font-style'     => [ 'type' => 'string' ],
+					'type'        => 'object',
+					'properties'  => [
+						'font-family'     => [ 'type' => 'string' ],
+						'font-size'       => [ 'type' => 'string', 'description' => 'CSS unit (e.g. 16px, 1.5rem)' ],
+						'font-weight'     => [ 'type' => [ 'string', 'number' ], 'description' => '700 or bold' ],
+						'line-height'     => [ 'type' => 'string' ],
+						'letter-spacing'  => [ 'type' => 'string' ],
+						'text-transform'  => [ 'type' => 'string', 'enum' => [ 'none', 'uppercase', 'lowercase', 'capitalize' ] ],
+						'text-decoration' => [ 'type' => 'string' ],
+						'text-align'      => [ 'type' => 'string', 'enum' => [ 'left', 'center', 'right', 'justify' ] ],
+						'font-style'      => [ 'type' => 'string', 'enum' => [ 'normal', 'italic', 'oblique' ] ],
+						'color'           => [
+							'type'        => 'object',
+							'properties'  => [ 'hex' => ['type'=>'string'], 'raw' => ['type'=>'string'], 'rgb' => ['type'=>'string'] ],
+							'description' => 'Text color object. Use {"hex":"#value"} or {"raw":"var(--color)"}',
+						],
 					],
+					'description' => 'Typography. color must be color object, not plain string.',
 				];
 
 			case 'image':
@@ -553,36 +587,62 @@ class SchemaGenerator {
 				];
 
 			case 'background':
+				// color MUST be a color object: {"hex":"#value"} or {"raw":"var(--var)"} — never a plain string.
 				return [
-					'type'       => 'object',
+					'type'        => 'object',
+					'description' => 'Background settings. color must be color object {hex/raw/rgb}, not a plain string.',
 					'properties' => [
-						'color'  => [
-							'type'    => 'string',
-							'pattern' => '^(#[a-fA-F0-9]{3,8}|rgba?\(|hsla?\(|var\()',
-						],
-						'image'  => [
-							'type'       => 'object',
-							'properties' => [
-								'id'  => [ 'type' => 'integer' ],
-								'url' => [ 'type' => 'string' ],
+						'color'      => [
+							'type'        => 'object',
+							'description' => 'Color object. Use {"hex":"#value"} or {"raw":"var(--var)"}. Never a plain string.',
+							'properties'  => [
+								'hex' => [ 'type' => 'string' ],
+								'raw' => [ 'type' => 'string' ],
+								'rgb' => [ 'type' => 'string' ],
 							],
 						],
-						'size'   => [ 'type' => 'string' ],
-						'repeat' => [ 'type' => 'string' ],
+						'image'      => [
+							'type'       => 'object',
+							'properties' => [
+								'id'   => [ 'type' => 'integer' ],
+								'url'  => [ 'type' => 'string' ],
+								'size' => [ 'type' => 'string', 'description' => 'Image size slug (e.g. "full", "large")' ],
+							],
+						],
+						'size'       => [ 'type' => 'string', 'description' => 'CSS background-size (e.g. "cover", "contain")' ],
+						'position'   => [ 'type' => 'string', 'description' => 'CSS background-position (e.g. "center center")' ],
+						'repeat'     => [ 'type' => 'string', 'description' => 'CSS background-repeat (e.g. "no-repeat")' ],
+						'attachment' => [ 'type' => 'string', 'description' => '"scroll" or "fixed"' ],
 					],
 				];
 
 			case 'border':
+				// width/radius: CSS unit STRINGS ("4px", "50%", "var(--r)") or per-side objects.
+				// color: color OBJECT {hex/raw/rgb}, never a plain string.
 				return [
-					'type'       => 'object',
+					'type'        => 'object',
+					'description' => 'Border settings. width/radius are CSS strings or per-side objects. color is a color object.',
 					'properties' => [
-						'width'  => [ 'type' => 'string' ],
-						'style'  => [ 'type' => 'string' ],
-						'color'  => [
-							'type'    => 'string',
-							'pattern' => '^(#[a-fA-F0-9]{3,8}|rgba?\(|hsla?\(|var\()',
+						'width'  => [
+							'description' => 'CSS string ("1px", "var(--border)") or per-side {top,right,bottom,left} object. NOT an integer.',
+							'oneOf' => [
+								[ 'type' => 'string' ],
+								[ 'type' => 'object', 'properties' => [ 'top' => ['type'=>'string'], 'right' => ['type'=>'string'], 'bottom' => ['type'=>'string'], 'left' => ['type'=>'string'] ] ],
+							],
 						],
-						'radius' => [ 'type' => 'string' ],
+						'style'  => [ 'type' => 'string', 'enum' => ['none','solid','dashed','dotted','double','groove','ridge','inset','outset'] ],
+						'color'  => [
+							'type'        => 'object',
+							'description' => 'Color object. {"hex":"#value"} or {"raw":"var(--var)"}. Never a plain string.',
+							'properties'  => [ 'hex' => ['type'=>'string'], 'raw' => ['type'=>'string'], 'rgb' => ['type'=>'string'] ],
+						],
+						'radius' => [
+							'description' => 'CSS string ("12px", "50%", "var(--r)") or per-corner {top,right,bottom,left} object. NOT an integer.',
+							'oneOf' => [
+								[ 'type' => 'string' ],
+								[ 'type' => 'object', 'properties' => [ 'top' => ['type'=>'string'], 'right' => ['type'=>'string'], 'bottom' => ['type'=>'string'], 'left' => ['type'=>'string'] ] ],
+							],
+						],
 					],
 				];
 
@@ -595,8 +655,9 @@ class SchemaGenerator {
 						'blur'    => [ 'type' => 'string' ],
 						'spread'  => [ 'type' => 'string' ],
 						'color'   => [
-							'type'    => 'string',
-							'pattern' => '^(#[a-fA-F0-9]{3,8}|rgba?\(|hsla?\(|var\()',
+							'type'        => 'object',
+							'description' => 'Color object {hex/raw/rgb}. Never a plain string.',
+							'properties'  => [ 'hex' => ['type'=>'string'], 'raw' => ['type'=>'string'], 'rgb' => ['type'=>'string'] ],
 						],
 					],
 				];
@@ -703,6 +764,7 @@ class SchemaGenerator {
 		return match ( $type ) {
 			'number'                     => 0,
 			'checkbox', 'toggle'         => false,
+			'color'                      => [ 'hex' => '#000000' ],
 			'repeater', 'gallery'        => [],
 			'image', 'link', 'icon',
 			'dimensions', 'typography',

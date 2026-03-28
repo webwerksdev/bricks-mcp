@@ -180,6 +180,9 @@ class BricksService {
 
 		update_post_meta( $post_id, self::EDITOR_MODE_KEY, 'bricks' );
 
+		// Trigger CSS regeneration so frontend styles reflect new content.
+		$this->trigger_css_regeneration( $post_id );
+
 		// Verify write persisted — bypass cache, read raw from database.
 		wp_cache_delete( $post_id, 'post_meta' );
 		$stored = get_post_meta( $post_id, self::META_KEY, true );
@@ -238,7 +241,7 @@ class BricksService {
 	 *
 	 * @return void
 	 */
-	public function unhook_bricks_meta_filters(): void {
+	private function unhook_bricks_meta_filters(): void {
 		global $wp_filter;
 
 		$sanitize_key = 'sanitize_post_meta_' . self::META_KEY;
@@ -272,7 +275,7 @@ class BricksService {
 	 *
 	 * @return void
 	 */
-	public function rehook_bricks_meta_filters(): void {
+	private function rehook_bricks_meta_filters(): void {
 		global $wp_filter;
 
 		$sanitize_key = 'sanitize_post_meta_' . self::META_KEY;
@@ -289,6 +292,29 @@ class BricksService {
 				$wp_filter['update_post_metadata']->callbacks[ $entry['priority'] ][ $entry['id'] ] = $entry['callback'];
 			}
 			unset( $this->stored_filters['update_post_metadata_bricks'] );
+		}
+	}
+
+	/**
+	 * Trigger Bricks CSS regeneration for a post after programmatic save.
+	 * Needed when Bricks uses External Files CSS mode - API saves bypass the editor
+	 * pipeline that normally regenerates static CSS files.
+	 *
+	 * @param int $post_id The post ID.
+	 * @return void
+	 */
+	public function trigger_css_regeneration( int $post_id ): void {
+		if ( ! $this->is_bricks_active() ) {
+			return;
+		}
+		try {
+			do_action( 'bricks/save_post', $post_id );
+			if ( class_exists( '\Bricks\Assets' ) && method_exists( '\Bricks\Assets', 'generate_css_from_elements' ) ) {
+				$elements = $this->get_elements( $post_id );
+				\Bricks\Assets::generate_css_from_elements( $elements, $post_id );
+			}
+		} catch ( \Throwable $e ) {
+			error_log( 'BricksMCP: CSS regen failed for post ' . $post_id . ': ' . $e->getMessage() );
 		}
 	}
 
@@ -1147,7 +1173,7 @@ class BricksService {
 			'id'     => $new_id,
 			'name'   => $name,
 			'color'  => isset( $args['color'] ) ? sanitize_text_field( $args['color'] ) : '#686868',
-			'styles' => $this->sanitize_styles_array( $args['styles'] ?? [] ),
+			'styles' => $args['styles'] ?? [],
 		];
 
 		if ( ! empty( $args['category'] ) ) {
@@ -1210,11 +1236,10 @@ class BricksService {
 			}
 
 			if ( isset( $args['styles'] ) ) {
-				$sanitized_styles = $this->sanitize_styles_array( $args['styles'] );
 				if ( ! empty( $args['replace_styles'] ) ) {
-					$class['styles'] = $sanitized_styles;
+					$class['styles'] = $args['styles'];
 				} else {
-					$class['styles'] = array_merge( $class['styles'] ?? [], $sanitized_styles );
+					$class['styles'] = array_merge( $class['styles'] ?? [], $args['styles'] );
 				}
 			}
 
@@ -1234,30 +1259,6 @@ class BricksService {
 				$class_id
 			)
 		);
-	}
-
-	/**
-	 * Recursively sanitize a styles array for global classes.
-	 *
-	 * Walks the nested styles structure and sanitizes all scalar values
-	 * to prevent stored XSS or injection via crafted style properties.
-	 *
-	 * @param array<string, mixed> $styles The styles array to sanitize.
-	 * @return array<string, mixed> Sanitized styles array.
-	 */
-	private function sanitize_styles_array( array $styles ): array {
-		$sanitized = [];
-		foreach ( $styles as $key => $value ) {
-			$safe_key = sanitize_text_field( (string) $key );
-			if ( is_array( $value ) ) {
-				$sanitized[ $safe_key ] = $this->sanitize_styles_array( $value );
-			} elseif ( is_string( $value ) ) {
-				$sanitized[ $safe_key ] = sanitize_text_field( $value );
-			} elseif ( is_int( $value ) || is_float( $value ) || is_bool( $value ) ) {
-				$sanitized[ $safe_key ] = $value;
-			}
-		}
-		return $sanitized;
 	}
 
 	/**
@@ -1876,17 +1877,17 @@ class BricksService {
 
 			// Background.
 			case 'background-color':
-				return [
-					'key'   => '_background',
-					'value' => [ 'color' => $value ],
-				];
+				// Bricks color format is always an object: {hex:'#value'} or {raw:'var(--x)'}
+				$color_val = ( str_starts_with( $value, 'var(' ) || str_starts_with( $value, 'rgba' ) || str_starts_with( $value, 'rgb(' ) || str_starts_with( $value, 'hsl' ) )
+					? [ 'raw' => $value ] : [ 'hex' => $value ];
+				return [ 'key' => '_background', 'value' => [ 'color' => $color_val ] ];
 
 			// Text color.
 			case 'color':
-				return [
-					'key'   => '_color',
-					'value' => $value,
-				];
+				// Bricks text color stored in _typography.color as an object
+				$tc_val = ( str_starts_with( $value, 'var(' ) || str_starts_with( $value, 'rgba' ) || str_starts_with( $value, 'rgb(' ) || str_starts_with( $value, 'hsl' ) )
+					? [ 'raw' => $value ] : [ 'hex' => $value ];
+				return [ 'key' => '_typography', 'value' => [ 'color' => $tc_val ] ];
 
 			// Typography.
 			case 'font-size':
@@ -1932,10 +1933,40 @@ class BricksService {
 
 			// Border radius.
 			case 'border-radius':
-				return [
-					'key'   => '_borderRadius',
-					'value' => $this->expand_spacing_shorthand( $value ),
-				];
+				return [ 'key' => '_borderRadius', 'value' => $this->expand_spacing_shorthand( $value ) ];
+
+			// Display.
+			case 'display': return [ 'key' => '_display', 'value' => $value ];
+
+			// Flex.
+			case 'flex-direction': return [ 'key' => '_direction', 'value' => $value ];
+			case 'align-items':    return [ 'key' => '_alignItems', 'value' => $value ];
+			case 'justify-content': return [ 'key' => '_justifyContent', 'value' => $value ];
+			case 'flex-grow':      return [ 'key' => '_flexGrow', 'value' => (int)$value ];
+			case 'flex-shrink':    return [ 'key' => '_flexShrink', 'value' => (int)$value ];
+			case 'gap':            return [ 'key' => '_gap', 'value' => $value ];
+
+			// Dimensions.
+			case 'width':      return [ 'key' => '_width', 'value' => $value ];
+			case 'max-width':  return [ 'key' => '_widthMax', 'value' => $value ];
+			case 'min-width':  return [ 'key' => '_widthMin', 'value' => $value ];
+			case 'height':     return [ 'key' => '_height', 'value' => $value ];
+			case 'max-height': return [ 'key' => '_heightMax', 'value' => $value ];
+			case 'min-height': return [ 'key' => '_heightMin', 'value' => $value ];
+
+			// Positioning.
+			case 'position': return [ 'key' => '_position', 'value' => $value ];
+			case 'z-index':  return [ 'key' => '_zIndex', 'value' => $value ];
+			case 'top':      return [ 'key' => '_top', 'value' => $value ];
+			case 'right':    return [ 'key' => '_right', 'value' => $value ];
+			case 'bottom':   return [ 'key' => '_bottom', 'value' => $value ];
+			case 'left':     return [ 'key' => '_left', 'value' => $value ];
+
+			// Overflow, opacity.
+			case 'overflow':   return [ 'key' => '_overflow', 'value' => $value ];
+			case 'overflow-x': return [ 'key' => '_overflowX', 'value' => $value ];
+			case 'overflow-y': return [ 'key' => '_overflowY', 'value' => $value ];
+			case 'opacity':    return [ 'key' => '_opacity', 'value' => $value ];
 
 			default:
 				return null;
@@ -2001,17 +2032,21 @@ class BricksService {
 	 * @return string Bricks breakpoint key, or empty string for unmatchable queries.
 	 */
 	private function resolve_media_query_to_breakpoint( string $query ): string {
+		// Bricks 2.x breakpoint keys (confirmed from Bricks\Breakpoints, v2.3.1):
+		// desktop (base, 1279px), tablet_portrait (991px), mobile_landscape (767px), mobile_portrait (478px)
 		$max_width_map = [
-			767  => 'mobile',
+			478  => 'mobile_portrait',
+			767  => 'mobile_landscape',
+			768  => 'mobile_landscape',
 			991  => 'tablet_portrait',
 			1023 => 'tablet_portrait',
-			1199 => 'tablet_landscape',
-			1279 => 'tablet_landscape',
+			1279 => 'desktop',
 		];
 
 		$min_width_map = [
+			479  => 'mobile_landscape',
 			768  => 'tablet_portrait',
-			1024 => 'tablet_landscape',
+			992  => 'desktop',
 		];
 
 		// Try max-width.
@@ -3235,289 +3270,6 @@ class BricksService {
 			'removed_element_id' => $element_id,
 			'post_id'            => $post_id,
 			'element_count'      => count( $updated_elements ),
-		];
-	}
-
-	/**
-	 * Move or reorder a Bricks element within a page's element tree.
-	 *
-	 * Supports both reparenting (changing parent) and reordering (changing position
-	 * within same parent). Moving a parent element moves its entire subtree automatically
-	 * since children reference their parent by ID.
-	 *
-	 * @param int      $post_id          Post ID.
-	 * @param string   $element_id       Element ID to move.
-	 * @param string   $target_parent_id Target parent ID ('' to keep current parent for reorder-only, '0' for root).
-	 * @param int|null $position         0-indexed position among siblings (null to append at end).
-	 * @return array<string, mixed>|\WP_Error Move result or WP_Error on failure.
-	 */
-	public function move_element( int $post_id, string $element_id, string $target_parent_id = '', ?int $position = null ): array|\WP_Error {
-		$post = get_post( $post_id );
-		if ( ! $post ) {
-			return new \WP_Error(
-				'post_not_found',
-				/* translators: %d: Post ID */
-				sprintf( __( 'Post %d not found. Verify the post_id and try again.', 'bricks-mcp' ), $post_id )
-			);
-		}
-
-		$elements = $this->get_elements( $post_id );
-
-		if ( empty( $elements ) ) {
-			return new \WP_Error(
-				'no_elements',
-				sprintf(
-					/* translators: %d: Post ID */
-					__( 'No Bricks elements found on post %d.', 'bricks-mcp' ),
-					$post_id
-				)
-			);
-		}
-
-		// Build id_map for O(1) lookups.
-		$id_map = [];
-		foreach ( $elements as $index => $element ) {
-			$id_map[ $element['id'] ] = $index;
-		}
-
-		// Validate element exists.
-		if ( ! isset( $id_map[ $element_id ] ) ) {
-			return new \WP_Error(
-				'element_not_found',
-				sprintf(
-					/* translators: 1: Element ID, 2: Post ID */
-					__( 'Element "%1$s" not found on post %2$d. Use get_bricks_content to retrieve valid element IDs.', 'bricks-mcp' ),
-					$element_id,
-					$post_id
-				)
-			);
-		}
-
-		// Determine effective target parent.
-		// '' (empty string) = reorder-only, keep current parent.
-		// '0' = move to root level.
-		// Otherwise = move to specified parent.
-		$old_parent = $elements[ $id_map[ $element_id ] ]['parent'];
-
-		if ( '' === $target_parent_id ) {
-			// Reorder-only: keep current parent.
-			$effective_target = $old_parent;
-		} elseif ( '0' === $target_parent_id ) {
-			// Move to root.
-			$effective_target = 0;
-		} else {
-			// Validate target parent exists.
-			if ( ! isset( $id_map[ $target_parent_id ] ) ) {
-				return new \WP_Error(
-					'parent_not_found',
-					sprintf(
-						/* translators: %s: Parent element ID */
-						__( 'Target parent element "%s" not found. Use get_bricks_content to retrieve valid element IDs.', 'bricks-mcp' ),
-						$target_parent_id
-					)
-				);
-			}
-			$effective_target = $target_parent_id;
-		}
-
-		// Remove element_id from old parent's children array (if old parent is not root).
-		if ( 0 !== $old_parent && '' !== (string) $old_parent ) {
-			$old_parent_str = (string) $old_parent;
-			if ( isset( $id_map[ $old_parent_str ] ) ) {
-				$old_parent_idx                          = $id_map[ $old_parent_str ];
-				$elements[ $old_parent_idx ]['children'] = array_values(
-					array_filter(
-						$elements[ $old_parent_idx ]['children'],
-						static fn( string $cid ) => $cid !== $element_id
-					)
-				);
-			}
-		}
-
-		// Update element's parent field (reorder-only leaves parent unchanged).
-		if ( '0' === $target_parent_id ) {
-			$elements[ $id_map[ $element_id ] ]['parent'] = 0;
-		} elseif ( '' !== $target_parent_id ) {
-			$elements[ $id_map[ $element_id ] ]['parent'] = $target_parent_id;
-		}
-
-		// Insert into new parent's children array.
-		if ( 0 === $effective_target || '0' === (string) $effective_target ) {
-			// Root-level: reposition element within the flat array among root elements.
-			// Extract element from current position.
-			$el = array_splice( $elements, $id_map[ $element_id ], 1 )[0];
-
-			// Rebuild id_map since indices shifted.
-			$id_map = [];
-			foreach ( $elements as $idx => $elem ) {
-				$id_map[ $elem['id'] ] = $idx;
-			}
-
-			if ( null === $position ) {
-				// Append after the last root element.
-				$last_root_idx = -1;
-				foreach ( $elements as $idx => $elem ) {
-					if ( 0 === $elem['parent'] ) {
-						$last_root_idx = $idx;
-					}
-				}
-				array_splice( $elements, $last_root_idx + 1, 0, [ $el ] );
-			} else {
-				// Count root elements to find correct flat array insertion point.
-				$root_count      = 0;
-				$insertion_point = count( $elements ); // Default: append.
-				foreach ( $elements as $idx => $elem ) {
-					if ( 0 === $elem['parent'] ) {
-						if ( $root_count === $position ) {
-							$insertion_point = $idx;
-							break;
-						}
-						++$root_count;
-					}
-				}
-				array_splice( $elements, $insertion_point, 0, [ $el ] );
-			}
-		} else {
-			// Non-root target: update target parent's children array.
-			$target_parent_idx = $id_map[ (string) $effective_target ];
-			if ( null === $position ) {
-				$elements[ $target_parent_idx ]['children'][] = $element_id;
-			} else {
-				array_splice( $elements[ $target_parent_idx ]['children'], $position, 0, [ $element_id ] );
-			}
-		}
-
-		// Save (validate_element_linkage runs automatically inside save_elements).
-		$saved = $this->save_elements( $post_id, $elements );
-		if ( is_wp_error( $saved ) ) {
-			return $saved;
-		}
-
-		// Rebuild id_map to get accurate new_parent from post-save state.
-		$id_map = [];
-		foreach ( $elements as $index => $element ) {
-			$id_map[ $element['id'] ] = $index;
-		}
-
-		$moved_element = $elements[ $id_map[ $element_id ] ];
-
-		return [
-			'element_id'    => $element_id,
-			'old_parent'    => $old_parent,
-			'new_parent'    => $moved_element['parent'],
-			'position'      => $position,
-			'subtree_moved' => ! empty( $moved_element['children'] ),
-		];
-	}
-
-	/**
-	 * Bulk update settings on multiple elements in a single call.
-	 *
-	 * Applies all valid updates in memory, then saves once. Uses partial-success
-	 * model: each item returns individual success/error status.
-	 *
-	 * @param int   $post_id Post ID.
-	 * @param array $updates Array of {element_id: string, settings: array} objects.
-	 * @return array<string, mixed>|\WP_Error Partial result or WP_Error if all fail.
-	 */
-	public function bulk_update_elements( int $post_id, array $updates ): array|\WP_Error {
-		if ( count( $updates ) > 50 ) {
-			return new \WP_Error(
-				'batch_too_large',
-				__( 'Maximum 50 element updates per call. Split into multiple calls.', 'bricks-mcp' )
-			);
-		}
-
-		$post = get_post( $post_id );
-		if ( ! $post ) {
-			return new \WP_Error(
-				'post_not_found',
-				/* translators: %d: Post ID */
-				sprintf( __( 'Post %d not found. Verify the post_id and try again.', 'bricks-mcp' ), $post_id )
-			);
-		}
-
-		$elements = $this->get_elements( $post_id );
-
-		if ( empty( $elements ) ) {
-			return new \WP_Error(
-				'no_elements',
-				sprintf(
-					/* translators: %d: Post ID */
-					__( 'No Bricks elements found on post %d.', 'bricks-mcp' ),
-					$post_id
-				)
-			);
-		}
-
-		// Build id_map for O(1) lookups.
-		$id_map = [];
-		foreach ( $elements as $index => $element ) {
-			$id_map[ $element['id'] ] = $index;
-		}
-
-		$success = [];
-		$errors  = [];
-
-		foreach ( $updates as $update ) {
-			$upd_element_id = $update['element_id'] ?? '';
-			$upd_settings   = $update['settings'] ?? [];
-
-			if ( '' === $upd_element_id ) {
-				$errors[] = [
-					'element_id' => $upd_element_id,
-					'error'      => 'Missing element_id',
-				];
-				continue;
-			}
-
-			if ( empty( $upd_settings ) ) {
-				$errors[] = [
-					'element_id' => $upd_element_id,
-					'error'      => 'Missing settings',
-				];
-				continue;
-			}
-
-			if ( ! isset( $id_map[ $upd_element_id ] ) ) {
-				$errors[] = [
-					'element_id' => $upd_element_id,
-					'error'      => 'Element not found',
-				];
-				continue;
-			}
-
-			$idx      = $id_map[ $upd_element_id ];
-			$existing = $elements[ $idx ]['settings'] ?? [];
-
-			$elements[ $idx ]['settings'] = array_merge( $existing, $upd_settings );
-
-			$success[] = [
-				'element_id' => $upd_element_id,
-				'status'     => 'updated',
-			];
-		}
-
-		if ( empty( $success ) ) {
-			return new \WP_Error(
-				'all_failed',
-				__( 'All element updates failed. Check element IDs and settings.', 'bricks-mcp' )
-			);
-		}
-
-		$saved = $this->save_elements( $post_id, $elements );
-		if ( is_wp_error( $saved ) ) {
-			return $saved;
-		}
-
-		return [
-			'success' => $success,
-			'errors'  => $errors,
-			'summary' => [
-				'total'     => count( $updates ),
-				'succeeded' => count( $success ),
-				'failed'    => count( $errors ),
-			],
 		];
 	}
 
@@ -5680,131 +5432,6 @@ class BricksService {
 	}
 
 	/**
-	 * Delete multiple global variables in a single operation.
-	 *
-	 * Reads the option once, removes matching variables, writes once, regenerates CSS once.
-	 * Uses partial-success model per D-13.
-	 *
-	 * @param array<int, string> $variable_ids Array of variable ID strings.
-	 * @return array<string, mixed>|\WP_Error Partial result or WP_Error if all fail.
-	 */
-	public function batch_delete_global_variables( array $variable_ids ): array|\WP_Error {
-		if ( count( $variable_ids ) > 50 ) {
-			return new \WP_Error( 'batch_too_large', __( 'Maximum 50 variable deletions per call.', 'bricks-mcp' ) );
-		}
-
-		$variables = get_option( 'bricks_global_variables', [] );
-
-		if ( ! is_array( $variables ) ) {
-			$variables = [];
-		}
-
-		// Build a lookup map from ID to index.
-		$var_map = [];
-		foreach ( $variables as $i => $var ) {
-			$var_map[ $var['id'] ?? '' ] = $i;
-		}
-
-		$success           = [];
-		$errors            = [];
-		$indices_to_remove = [];
-
-		foreach ( $variable_ids as $vid ) {
-			if ( isset( $var_map[ $vid ] ) ) {
-				$success[]           = [ 'id' => $vid, 'status' => 'deleted' ];
-				$indices_to_remove[] = $var_map[ $vid ];
-			} else {
-				$errors[] = [ 'id' => $vid, 'error' => 'Variable not found' ];
-			}
-		}
-
-		if ( empty( $success ) ) {
-			return new \WP_Error( 'all_failed', __( 'None of the specified variable IDs were found.', 'bricks-mcp' ) );
-		}
-
-		// Sort descending to avoid index shifting during splice.
-		rsort( $indices_to_remove );
-		foreach ( $indices_to_remove as $idx ) {
-			array_splice( $variables, $idx, 1 );
-		}
-
-		update_option( 'bricks_global_variables', $variables );
-
-		$css_regenerated = $this->regenerate_style_manager_css();
-
-		return [
-			'success'         => $success,
-			'errors'          => $errors,
-			'summary'         => [
-				'total'     => count( $variable_ids ),
-				'succeeded' => count( $success ),
-				'failed'    => count( $errors ),
-			],
-			'css_regenerated' => $css_regenerated,
-		];
-	}
-
-	/**
-	 * Search global variables by name and/or value substring.
-	 *
-	 * Case-insensitive matching using stripos(). Returns flat array of matching variables.
-	 *
-	 * @param string $name        Name substring filter (empty = no filter).
-	 * @param string $value       Value substring filter (empty = no filter).
-	 * @param string $category_id Category ID filter (empty = no filter).
-	 * @return array<string, mixed> Search results with count and variables.
-	 */
-	public function search_global_variables( string $name = '', string $value = '', string $category_id = '' ): array {
-		$variables = get_option( 'bricks_global_variables', [] );
-
-		if ( ! is_array( $variables ) ) {
-			$variables = [];
-		}
-
-		// If all filters are empty, return all variables.
-		if ( '' === $name && '' === $value && '' === $category_id ) {
-			return [
-				'variables' => array_values( $variables ),
-				'count'     => count( $variables ),
-				'filters'   => [],
-			];
-		}
-
-		$filtered = array_values(
-			array_filter(
-				$variables,
-				function ( array $var ) use ( $name, $value, $category_id ): bool {
-					if ( '' !== $name && false === stripos( $var['name'] ?? '', $name ) ) {
-						return false;
-					}
-
-					if ( '' !== $value && false === stripos( $var['value'] ?? '', $value ) ) {
-						return false;
-					}
-
-					if ( '' !== $category_id && ( $var['category'] ?? '' ) !== $category_id ) {
-						return false;
-					}
-
-					return true;
-				}
-			)
-		);
-
-		return [
-			'variables' => $filtered,
-			'count'     => count( $filtered ),
-			'filters'   => array_filter(
-				[
-					'name'        => $name,
-					'value'       => $value,
-					'category_id' => $category_id,
-				]
-			),
-		];
-	}
-
-	/**
 	 * Get Bricks global settings with optional category filtering and key masking.
 	 *
 	 * Returns build-relevant settings categorized by group. API keys are always
@@ -6998,22 +6625,9 @@ class BricksService {
 			update_post_meta( $template_id, $page_settings_key, $page_settings );
 		}
 
-		// Save template settings if provided (allowlisted keys only).
+		// Save template settings if provided.
 		if ( ! empty( $data['templateSettings'] ) && is_array( $data['templateSettings'] ) ) {
-			$allowed_template_keys = array(
-				'templateConditions',
-				'headerPosition',
-				'headerSticky',
-				'templateOrder',
-				'templateIncludeChildren',
-			);
-			$safe_settings         = array_intersect_key(
-				$data['templateSettings'],
-				array_flip( $allowed_template_keys )
-			);
-			if ( ! empty( $safe_settings ) ) {
-				update_post_meta( $template_id, '_bricks_template_settings', $safe_settings );
-			}
+			update_post_meta( $template_id, '_bricks_template_settings', $data['templateSettings'] );
 		}
 
 		// Merge global classes if present.
@@ -7056,7 +6670,7 @@ class BricksService {
 			);
 		}
 
-		$response = wp_safe_remote_get(
+		$response = wp_remote_get(
 			$url,
 			array(
 				'timeout' => 30,
@@ -7413,20 +7027,11 @@ class BricksService {
 	/**
 	 * Set page custom CSS.
 	 *
-	 * Requires dangerous_actions toggle to be enabled.
-	 *
 	 * @param int    $post_id Post ID.
 	 * @param string $css     Custom CSS code. Empty string removes CSS.
 	 * @return array<string, mixed>|\WP_Error Update result or error.
 	 */
 	public function update_page_css( int $post_id, string $css ): array|\WP_Error {
-		if ( ! $this->is_dangerous_actions_enabled() ) {
-			return new \WP_Error(
-				'dangerous_actions_disabled',
-				__( 'Custom CSS requires the Dangerous Actions toggle to be enabled in Bricks MCP settings. This is a security measure to prevent code injection.', 'bricks-mcp' )
-			);
-		}
-
 		$post = get_post( $post_id );
 
 		if ( ! $post ) {
