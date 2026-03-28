@@ -67,4 +67,41 @@ final class StreamableHttpHandlerTest extends TestCase {
 	public function test_invalid_request_constant(): void {
 		$this->assertSame( -32600, StreamableHttpHandler::INVALID_REQUEST );
 	}
+
+	/**
+	 * Test: MAX_BODY_SIZE constant equals 1048576 (1 MB).
+	 *
+	 * @return void
+	 */
+	public function test_max_body_size_constant(): void {
+		$this->assertSame( 1048576, StreamableHttpHandler::MAX_BODY_SIZE );
+	}
+
+	/**
+	 * Test: jsonrpc_error returns correct shape for body-too-large error.
+	 *
+	 * Verifies that the private jsonrpc_error() helper produces the expected
+	 * JSON-RPC 2.0 error response for the body size limit message.
+	 *
+	 * @return void
+	 */
+	public function test_jsonrpc_error_format_for_body_too_large(): void {
+		$ref     = new \ReflectionClass( StreamableHttpHandler::class );
+		$handler = $ref->newInstanceWithoutConstructor();
+
+		$method = new \ReflectionMethod( $handler, 'jsonrpc_error' );
+		$method->setAccessible( true );
+
+		$result = $method->invoke(
+			$handler,
+			null,
+			StreamableHttpHandler::INVALID_REQUEST,
+			'Request body too large'
+		);
+
+		$this->assertSame( '2.0', $result['jsonrpc'] );
+		$this->assertNull( $result['id'] );
+		$this->assertSame( -32600, $result['error']['code'] );
+		$this->assertSame( 'Request body too large', $result['error']['message'] );
+	}
 }
