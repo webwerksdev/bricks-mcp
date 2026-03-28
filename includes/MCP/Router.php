@@ -180,6 +180,10 @@ final class Router {
 						'enum'        => array( 'all', 'active', 'inactive' ),
 						'description' => __( 'Filter by plugin status (get_plugins)', 'bricks-mcp' ),
 					),
+					'include_pii'    => array(
+						'type'        => 'boolean',
+						'description' => __( 'Include sensitive fields (email, login). Warning: data may be logged by AI services. (get_users: default false)', 'bricks-mcp' ),
+					),
 				),
 				'required'   => array( 'action' ),
 			),
@@ -481,15 +485,22 @@ final class Router {
 		$users  = get_users( $query_args );
 		$result = array();
 
+		$include_pii = ! empty( $args['include_pii'] );
+
 		foreach ( $users as $user ) {
-			$result[] = array(
+			$user_data = array(
 				'id'           => $user->ID,
-				'login'        => $user->user_login,
-				'email'        => $user->user_email,
 				'display_name' => $user->display_name,
 				'registered'   => $user->user_registered,
 				'roles'        => $user->roles,
 			);
+
+			if ( $include_pii ) {
+				$user_data['login'] = $user->user_login;
+				$user_data['email'] = $user->user_email;
+			}
+
+			$result[] = $user_data;
 		}
 
 		return $result;
