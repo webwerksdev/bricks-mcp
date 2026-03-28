@@ -51,8 +51,15 @@ jobs:
             ./ build/bricks-mcp/
           cd build && zip -r "bricks-mcp.zip" bricks-mcp/
 
+      - name: Generate SHA-256 checksum
+        run: |
+          cd build
+          sha256sum bricks-mcp.zip > bricks-mcp.zip.sha256
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          files: build/bricks-mcp.zip
+          files: |
+            build/bricks-mcp.zip
+            build/bricks-mcp.zip.sha256
           generate_release_notes: true
