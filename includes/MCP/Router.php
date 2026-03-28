@@ -463,14 +463,20 @@ final class Router {
 	 * @return array<int, array<string, mixed>> Users list.
 	 */
 	private function tool_get_users( array $args ): array {
-		$defaults = array(
-			'number' => 10,
+		$allowed_orderby = array( 'display_name', 'registered', 'ID' );
+		$allowed_order   = array( 'ASC', 'DESC' );
+
+		$query_args = array(
+			'number'  => min( isset( $args['number'] ) ? absint( $args['number'] ) : 10, 100 ),
+			'role'    => isset( $args['role'] ) ? sanitize_text_field( (string) $args['role'] ) : '',
+			'orderby' => isset( $args['orderby'] ) && in_array( $args['orderby'], $allowed_orderby, true )
+				? $args['orderby']
+				: 'display_name',
+			'order'   => isset( $args['order'] ) && in_array( strtoupper( (string) $args['order'] ), $allowed_order, true )
+				? strtoupper( (string) $args['order'] )
+				: 'ASC',
+			'paged'   => isset( $args['paged'] ) ? absint( $args['paged'] ) : 1,
 		);
-
-		$query_args = wp_parse_args( $args, $defaults );
-
-		// Limit number to prevent abuse.
-		$query_args['number'] = min( (int) $query_args['number'], 100 );
 
 		$users  = get_users( $query_args );
 		$result = array();

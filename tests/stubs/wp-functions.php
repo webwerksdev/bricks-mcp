@@ -231,6 +231,13 @@ if ( ! function_exists( 'get_posts' ) ) {
 	}
 }
 
+if ( ! function_exists( 'get_users' ) ) {
+	function get_users( array $args = [] ): array {
+		$GLOBALS['_bricks_mcp_test_last_get_users_args'] = $args;
+		return $GLOBALS['_bricks_mcp_test_get_users_return'] ?? [];
+	}
+}
+
 if ( ! function_exists( 'update_postmeta_cache' ) ) {
 	function update_postmeta_cache( array $post_ids ): void {
 		// No-op in tests.

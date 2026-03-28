@@ -31,9 +31,11 @@ final class RouterTest extends TestCase {
 	protected function setUp(): void {
 		parent::setUp();
 
-		$GLOBALS['_bricks_mcp_test_current_user_can']  = true;
-		$GLOBALS['_bricks_mcp_test_get_posts_return']   = [];
-		$GLOBALS['_bricks_mcp_test_last_get_posts_args'] = [];
+		$GLOBALS['_bricks_mcp_test_current_user_can']    = true;
+		$GLOBALS['_bricks_mcp_test_get_posts_return']     = [];
+		$GLOBALS['_bricks_mcp_test_last_get_posts_args']  = [];
+		$GLOBALS['_bricks_mcp_test_get_users_return']     = [];
+		$GLOBALS['_bricks_mcp_test_last_get_users_args']  = [];
 
 		$this->router = new Router();
 	}
@@ -47,7 +49,9 @@ final class RouterTest extends TestCase {
 		unset(
 			$GLOBALS['_bricks_mcp_test_current_user_can'],
 			$GLOBALS['_bricks_mcp_test_get_posts_return'],
-			$GLOBALS['_bricks_mcp_test_last_get_posts_args']
+			$GLOBALS['_bricks_mcp_test_last_get_posts_args'],
+			$GLOBALS['_bricks_mcp_test_get_users_return'],
+			$GLOBALS['_bricks_mcp_test_last_get_users_args']
 		);
 
 		parent::tearDown();
@@ -173,5 +177,118 @@ final class RouterTest extends TestCase {
 		$this->assertSame( 'date', $captured['orderby'] );
 		$this->assertSame( 'DESC', $captured['order'] );
 		$this->assertSame( 'publish', $captured['post_status'] );
+	}
+
+	// =========================================================================
+	// get_users parameter allowlisting tests.
+	// =========================================================================
+
+	/**
+	 * Helper to call tool_get_users via the public tool_wordpress dispatcher.
+	 *
+	 * @param array<string, mixed> $extra_args Extra arguments to merge with defaults.
+	 * @return array<string, mixed>|\WP_Error
+	 */
+	private function call_get_users( array $extra_args = [] ): array|\WP_Error {
+		return $this->router->tool_wordpress( array_merge( [ 'action' => 'get_users' ], $extra_args ) );
+	}
+
+	/**
+	 * Get the arguments that were passed to WP get_users().
+	 *
+	 * @return array<string, mixed>
+	 */
+	private function get_captured_get_users_args(): array {
+		return $GLOBALS['_bricks_mcp_test_last_get_users_args'] ?? [];
+	}
+
+	/**
+	 * Dangerous params (search, meta_query, search_columns, login__in, include) must NOT pass through.
+	 */
+	public function test_get_users_disallowed_params_stripped(): void {
+		$this->call_get_users( [
+			'search'         => 'admin',
+			'meta_query'     => [ [ 'key' => 'secret', 'value' => 'leaked' ] ],
+			'search_columns' => [ 'user_login', 'user_email' ],
+			'login__in'      => [ 'admin' ],
+			'include'        => [ 1, 2, 3 ],
+			'meta_key'       => 'secret_field',
+			'meta_value'     => 'leaked',
+		] );
+
+		$captured = $this->get_captured_get_users_args();
+		$this->assertArrayNotHasKey( 'search', $captured );
+		$this->assertArrayNotHasKey( 'meta_query', $captured );
+		$this->assertArrayNotHasKey( 'search_columns', $captured );
+		$this->assertArrayNotHasKey( 'login__in', $captured );
+		$this->assertArrayNotHasKey( 'include', $captured );
+		$this->assertArrayNotHasKey( 'meta_key', $captured );
+		$this->assertArrayNotHasKey( 'meta_value', $captured );
+	}
+
+	/**
+	 * Allowed params pass through with proper values.
+	 */
+	public function test_get_users_allowed_params_pass_through(): void {
+		$this->call_get_users( [
+			'number'  => 25,
+			'role'    => 'editor',
+			'orderby' => 'registered',
+			'order'   => 'DESC',
+			'paged'   => 3,
+		] );
+
+		$captured = $this->get_captured_get_users_args();
+		$this->assertSame( 25, $captured['number'] );
+		$this->assertSame( 'editor', $captured['role'] );
+		$this->assertSame( 'registered', $captured['orderby'] );
+		$this->assertSame( 'DESC', $captured['order'] );
+		$this->assertSame( 3, $captured['paged'] );
+	}
+
+	/**
+	 * number is capped at 100.
+	 */
+	public function test_get_users_number_capped_at_100(): void {
+		$this->call_get_users( [ 'number' => 999 ] );
+
+		$captured = $this->get_captured_get_users_args();
+		$this->assertSame( 100, $captured['number'] );
+	}
+
+	/**
+	 * orderby only accepts allowlisted values.
+	 */
+	public function test_get_users_orderby_rejects_invalid(): void {
+		$this->call_get_users( [ 'orderby' => 'meta_value' ] );
+
+		$captured = $this->get_captured_get_users_args();
+		$this->assertSame( 'display_name', $captured['orderby'] );
+	}
+
+	/**
+	 * order only accepts ASC or DESC.
+	 */
+	public function test_get_users_order_rejects_invalid(): void {
+		$this->call_get_users( [ 'order' => 'RAND' ] );
+
+		$captured = $this->get_captured_get_users_args();
+		$this->assertSame( 'ASC', $captured['order'] );
+	}
+
+	/**
+	 * Default values are correct when no args provided.
+	 */
+	public function test_get_users_defaults(): void {
+		$this->call_get_users();
+
+		$captured = $this->get_captured_get_users_args();
+		$this->assertSame( 10, $captured['number'] );
+		$this->assertSame( '', $captured['role'] );
+		$this->assertSame( 'display_name', $captured['orderby'] );
+		$this->assertSame( 'ASC', $captured['order'] );
+		$this->assertSame( 1, $captured['paged'] );
+		// Only these 5 keys should exist.
+		$this->assertCount( 5, $captured );
 	}
 }
