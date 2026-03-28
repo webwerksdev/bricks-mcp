@@ -85,6 +85,91 @@ Authentication uses WordPress [Application Passwords](https://make.wordpress.org
 | `font` | Custom font management |
 | `code` | Page-level CSS and JavaScript |
 
+## Try It Out
+
+Once connected, try these prompts with your AI tool. Each one exercises different MCP tools and can be used to verify the integration is working.
+
+### Basic checks
+
+```
+What WordPress site am I connected to? What version is it running?
+```
+
+```
+List all active plugins on this site.
+```
+
+```
+Show me the Bricks Builder guide so I understand how to build pages.
+```
+
+### Page building
+
+```
+Create a new page called "About Us" with a hero section containing a heading
+"About Our Company" and a paragraph of placeholder text below it.
+```
+
+```
+Add a two-column container to the About Us page. Put a heading and text in the
+left column, and an image placeholder in the right column.
+```
+
+```
+List all my pages and show which ones use Bricks Builder.
+```
+
+### Global styles
+
+```
+Create a global class called "btn-primary" with 12px 24px padding, white text,
+#2563eb background, 6px border radius, and 600 font weight.
+```
+
+```
+Create a color palette called "Brand Colors" with: Primary #2563eb, Secondary
+#7c3aed, Accent #f59e0b, and Neutral #64748b.
+```
+
+```
+Create a theme style that sets all H1 headings to 48px bold and H2 to 36px
+semibold.
+```
+
+### Templates
+
+```
+Create a section template called "CTA Banner" with a dark background section
+containing a centered heading and a button.
+```
+
+```
+List all my templates and their types.
+```
+
+### Menus
+
+```
+Create a navigation menu called "Main Menu" with links to Home (/), About
+(/about/), Services (/services/), and Contact (/contact/).
+```
+
+### Advanced
+
+```
+Show me the Bricks settings and breakpoints configured on this site.
+```
+
+```
+Create a typography scale with steps: xs 12px, sm 14px, base 16px, lg 20px,
+xl 24px, 2xl 32px, 3xl 48px. Use the prefix --fs-.
+```
+
+```
+Create a set of global CSS variables for spacing: --space-xs 4px, --space-sm
+8px, --space-md 16px, --space-lg 32px, --space-xl 64px.
+```
+
 ## Configuration
 
 Go to **Settings > Bricks MCP** in WordPress admin:
