@@ -270,6 +270,18 @@ if ( ! function_exists( 'get_the_post_thumbnail_url' ) ) {
 	}
 }
 
+if ( ! function_exists( 'wp_parse_url' ) ) {
+	function wp_parse_url( string $url, int $component = -1 ): string|int|array|null|false {
+		return parse_url( $url, $component ); // phpcs:ignore WordPress.WP.AlternativeFunctions.parse_url_parse_url
+	}
+}
+
+if ( ! function_exists( 'download_url' ) ) {
+	function download_url( string $url, int $timeout = 300 ): string|\WP_Error {
+		return $GLOBALS['_bricks_mcp_test_download_url_return'] ?? '/tmp/test-file.jpg';
+	}
+}
+
 if ( ! function_exists( 'wp_http_validate_url' ) ) {
 	function wp_http_validate_url( string $url ): string|false {
 		return $GLOBALS['_bricks_mcp_test_wp_http_validate_url_return'] ?? $url;

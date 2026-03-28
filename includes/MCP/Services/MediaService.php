@@ -130,6 +130,17 @@ class MediaService {
 		?string $unsplash_id = null,
 		?string $download_location = null
 	): array|\WP_Error {
+		// Validate URL scheme — only HTTP(S) allowed to prevent SSRF.
+		$scheme = wp_parse_url( $url, PHP_URL_SCHEME );
+		if ( ! in_array( strtolower( (string) $scheme ), array( 'http', 'https' ), true ) ) {
+			return new \WP_Error( 'invalid_scheme', 'Only HTTP and HTTPS URLs are allowed.' );
+		}
+
+		// Validate URL against internal/private IPs.
+		if ( ! wp_http_validate_url( $url ) ) {
+			return new \WP_Error( 'invalid_url', 'URL validation failed.' );
+		}
+
 		// Require admin includes for sideloading (safe to call multiple times).
 		require_once ABSPATH . 'wp-admin/includes/media.php';
 		require_once ABSPATH . 'wp-admin/includes/file.php';
