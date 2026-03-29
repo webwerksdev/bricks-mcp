@@ -3,7 +3,7 @@ Contributors: cristianuibar, optiwebopz
 Tags: ai, bricks builder, mcp, artificial intelligence, page builder
 Requires at least: 6.4
 Tested up to: 6.8
-Stable tag: 1.4.1
+Stable tag: 1.5.0
 Requires PHP: 8.2
 License: GPL-2.0-or-later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -107,25 +107,39 @@ Yes, when configured correctly. The plugin enforces WordPress Application Passwo
 
 == Changelog ==
 
-= 1.4.1 =
-* Fix: Critical sanitization overhaul in ElementNormalizer — _cssCustom multi-line CSS now preserved correctly (sanitize_text_field() was collapsing newlines into single-line strings, breaking all multi-line custom CSS blocks).
-* Fix: CSS child combinator (>) and pseudo-selectors (::before, ::after) in _cssCustom no longer encoded to &gt; — wp_kses_post() has been replaced with wp_strip_all_tags() for all CSS code keys, preserving full CSS syntax.
-* Fix: All underscore-prefixed Bricks style keys (_padding, _background, _typography, _border, _transform, _display, etc.) now use CSS-safe sanitization instead of sanitize_text_field(), preventing corruption of CSS units, CSS variables, and color values.
-* Fix: Breakpoint/pseudo composite keys (_padding:tablet_portrait, _background:hover, _typography:mobile_portrait:focus) now correctly identified as style keys and sanitized appropriately.
-* Fix: Background color in CSS import (import_classes_from_css) now stores correct Bricks color object format {"hex":"#value"} instead of a plain string — was silently broken and rendered nothing on frontend.
-* Fix: Text color (color CSS property) now imports into _typography.color as a color object instead of _color as a raw string.
-* Fix: Border width and radius values documented and handled as CSS unit strings ("4px", "50%", "var(--r)") not integers — matches actual Bricks internal storage format.
-* Fix: Breakpoint map in CSS importer corrected to Bricks 2.x keys: mobile → mobile_portrait, added mobile_landscape (478px/767px).
-* Fix: Schema cache replaced from transient-based to non-autoloaded wp_options — transients are wiped by WP Rocket, LiteSpeed Cache, and other performance plugins causing schema regeneration on every page load after a cache flush.
-* Fix: _maxWidth settings key auto-corrected to _widthMax (non-existent key was silently ignored by Bricks, styles never applied).
-* Fix: _textAlign settings key silently dropped with a log entry (non-existent — use _typography["text-align"] instead).
-* New: trigger_css_regeneration() method added to BricksService — fires Bricks CSS regeneration pipeline after programmatic saves, fixing "no styles on frontend" when External Files CSS loading method is active.
-* New: 20+ additional CSS properties now mapped in import_classes_from_css: display, flex-direction, align-items, justify-content, flex-grow, flex-shrink, gap, width, max-width, min-width, height, max-height, min-height, position, z-index, top, right, bottom, left, overflow, overflow-x, overflow-y, opacity.
-* New: SchemaGenerator color schema corrected — all color controls documented as Bricks color objects ({hex/raw/rgb}) not plain strings, with proper description and pattern validation.
-* New: Border control schema corrected — radius and width types changed from integer to string with CSS unit examples.
-* New: Typography schema extended with text-decoration, text-align, font-style enum values, and color field with correct color object schema.
-* Compatibility: Fully verified against Bricks Builder 2.3.1 on PHP 8.1+.
-* Props: @optiwebopz for the original contribution (PR #14).
+= 1.5.0 =
+* Security: Fix SSRF in template import by enforcing wp_safe_remote_get (blocks internal network requests).
+* Security: Fix SSRF in media sideload by validating URL scheme and blocking internal IPs.
+* Security: Fix CSS injection by requiring dangerous_actions toggle for custom CSS writes.
+* Security: Fix DOM-based XSS in diagnostic display via escHtml() helper.
+* Security: Fix WP_Query parameter injection in get_posts tool — strict allowlist for query args.
+* Security: Fix WP_User_Query parameter injection in get_users tool — strict allowlist for query args.
+* Security: Fix schema validation failing open when Opis library is unavailable.
+* Security: Hide user email and login from get_users by default, add opt-in include_pii argument.
+* Security: Add MAX_BODY_SIZE constant (1 MB) and body size check before JSON decode.
+* Security: Add batch size limit (max 20) for JSON-RPC requests.
+* Security: Add SHA-256 checksum verification for auto-updates via upgrader_pre_download hook.
+* Fix: Critical sanitization overhaul — _cssCustom multi-line CSS now preserved correctly, CSS child combinator (>) no longer encoded to &gt;, all style keys use CSS-safe sanitization.
+* Fix: Background and text color in CSS import now store correct Bricks color object format.
+* Fix: Border width/radius handled as CSS unit strings, not integers.
+* Fix: Breakpoint map corrected to Bricks 2.x keys.
+* Fix: Schema cache moved from transients to non-autoloaded wp_options (survives cache flushes).
+* Fix: WooCommerce scaffold wrong method call, missing normalization, 18 incorrect element names.
+* Fix: set_conditions private method access error in BricksService.
+* Fix: Type mismatch in component:instantiate root-level placement.
+* Fix: Type error in get_posts thumbnail cache priming.
+* New: MCP auth discovery endpoint and WWW-Authenticate header for 401 responses.
+* New: OAuth well-known endpoints return JSON 404 instead of HTML error pages.
+* New: Rate limiter transient fallback for sites without persistent object cache.
+* New: Rate limiting now covers unauthenticated requests.
+* New: trigger_css_regeneration() for programmatic saves with External Files CSS mode.
+* New: 20+ additional CSS properties mapped in import_classes_from_css.
+* New: SchemaGenerator color, border, and typography schemas corrected for Bricks internal formats.
+* New: SHA-256 checksum file generated alongside release ZIP.
+* New: Unit test suite with stubs-based bootstrap (66 tests, 157 assertions).
+* Removed: Dead Deactivator class and 17 unused $write_actions arrays.
+* Compatibility: Verified against Bricks Builder 2.3.1 on PHP 8.2+.
+* Props: @optiwebopz for the CSS sanitization contribution (PR #14).
 
 = 1.4.0 =
 * New: Connection diagnostics system — 9 automated checks detect what's blocking MCP API endpoints or App Passwords.
@@ -202,8 +216,8 @@ Yes, when configured correctly. The plugin enforces WordPress Application Passwo
 
 == Upgrade Notice ==
 
-= 1.4.1 =
-Critical fix for visual styling — CSS sanitization overhaul ensures _cssCustom, colors, borders, and typography settings are stored correctly and render properly in the visual builder. Recommended for all users.
+= 1.5.0 =
+Major security hardening release: fixes SSRF, XSS, parameter injection, and CSS injection vulnerabilities. CSS sanitization overhaul for visual builder compatibility. MCP auth discovery endpoints. Recommended for all users.
 
 = 1.3.0 =
 MCP initialize instructions, infobox template support, Bricks 2.3 builder settings and CSS gotcha corrections, color param aliases.
