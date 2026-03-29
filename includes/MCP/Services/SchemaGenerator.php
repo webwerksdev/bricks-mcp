@@ -432,6 +432,35 @@ class SchemaGenerator {
 	}
 
 	/**
+	 * Read cached schema data from wp_options.
+	 *
+	 * Returns null if the cache is expired or missing.
+	 *
+	 * @param string $key Option name for the cached data.
+	 * @return array<string, mixed>|null Cached schemas or null if expired/missing.
+	 */
+	private function read_cache( string $key ): ?array {
+		$expires = get_option( self::CACHE_EXPIRY_OPTION, 0 );
+		if ( time() > (int) $expires ) {
+			return null;
+		}
+		$data = get_option( $key, null );
+		return is_array( $data ) ? $data : null;
+	}
+
+	/**
+	 * Write schema data to wp_options cache (non-autoloaded).
+	 *
+	 * @param string              $key  Option name for the cached data.
+	 * @param array<string, mixed> $data Schema data to cache.
+	 * @return void
+	 */
+	private function write_cache( string $key, array $data ): void {
+		update_option( $key, $data, false );
+		update_option( self::CACHE_EXPIRY_OPTION, time() + self::CACHE_DURATION, false );
+	}
+
+	/**
 	 * Map a Bricks control definition to a JSON Schema type.
 	 *
 	 * @param array<string, mixed> $control Bricks control definition.
