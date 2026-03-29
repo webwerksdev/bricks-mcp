@@ -2,24 +2,6 @@
 /**
  * Bricks element normalizer.
  *
- * File: wp-content/plugins/bricks-mcp/includes/MCP/Services/ElementNormalizer.php
- * Version: 2.0.0
- *
- * Changelog:
- * 2.0.0 - 2026-03-28
- *   - CRITICAL FIX: wp_kses_post() was encoding '>' to '&gt;' in CSS - replaced with
- *     wp_strip_all_tags() for all CSS values preserving combinators & pseudo-selectors.
- *   - CRITICAL FIX: sanitize_text_field() collapsed newlines in _cssCustom blocks - replaced
- *     with wp_strip_all_tags() which preserves CSS whitespace/newlines.
- *   - CRITICAL FIX: All underscore-prefixed style keys (_padding, _background, _typography,
- *     _border, _cssCustom, etc.) now use CSS-safe sanitization, not text sanitization.
- *   - CRITICAL FIX: Breakpoint/pseudo composite keys (_padding:tablet_portrait, _bg:hover)
- *     now correctly identified as style keys and sanitized appropriately.
- *   - FIX: _maxWidth auto-corrected to _widthMax (non-functional key silently ignored by Bricks).
- *   - FIX: _textAlign silently dropped (use _typography["text-align"] instead).
- *   - ADDED: apply_key_corrections(), is_css_style_key(), is_css_code_key(),
- *     sanitize_css_string(), sanitize_css_value(), sanitize_style_value() helpers.
- *
  * @package BricksMCP
  * @license GPL-2.0-or-later
  */

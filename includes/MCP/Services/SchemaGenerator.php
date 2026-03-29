@@ -2,20 +2,6 @@
 /**
  * Bricks element schema generator service.
  *
- * File: wp-content/plugins/bricks-mcp/includes/MCP/Services/SchemaGenerator.php
- * Version: 2.0.0
- *
- * Changelog:
- * 2.0.0 - 2026-03-28
- *   - FIX: Replaced transient cache with wp_options non-autoloaded persistent cache.
- *     Transients are wiped by WP Rocket/caching plugins; wp_options survives full cache flushes.
- *   - FIX: Color schema corrected - Bricks colors are OBJECTS ({hex/raw/rgb}), never plain strings.
- *   - FIX: Border radius/width schema corrected - values are CSS unit STRINGS, not integers.
- *   - FIX: Typography color corrected to use color object schema.
- *   - FIX: Background color corrected to use color object schema.
- *   - ADDED: get_color_object_schema() helper for consistent color schema definitions.
- *   - ADDED: Flush hooks for Bricks update and settings changes.
- *
  * @package BricksMCP
  * @license GPL-2.0-or-later
  */

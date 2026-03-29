@@ -137,9 +137,6 @@ Yes, when configured correctly. The plugin enforces WordPress Application Passwo
 * New: Dependency-ordered check execution — checks skip automatically when prerequisites fail.
 * New: Connection Troubleshooting section in Builder Guide for AI-assisted troubleshooting.
 
-= 1.4.1 =
-Critical fix for visual styling — CSS sanitization overhaul ensures _cssCustom, colors, borders, and typography settings are stored correctly and render properly in the visual builder. Recommended for all users.
-
 = 1.3.0 =
 * New: Add MCP instructions field to initialize response to guide AI clients on available tools.
 * New: Surface Bricks 2.3 builder settings (builderHtmlCssConverter, builderGlobalClassesImport) in get_settings.
