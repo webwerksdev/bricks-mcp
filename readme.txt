@@ -3,7 +3,7 @@ Contributors: cristianuibar
 Tags: ai, bricks builder, mcp, artificial intelligence, page builder
 Requires at least: 6.4
 Tested up to: 6.8
-Stable tag: 1.4.0
+Stable tag: 1.4.1
 Requires PHP: 8.2
 License: GPL-2.0-or-later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -107,6 +107,25 @@ Yes, when configured correctly. The plugin enforces WordPress Application Passwo
 
 == Changelog ==
 
+= 1.4.1 =
+* Fix: Critical sanitization overhaul in ElementNormalizer — _cssCustom multi-line CSS now preserved correctly (sanitize_text_field() was collapsing newlines into single-line strings, breaking all multi-line custom CSS blocks).
+* Fix: CSS child combinator (>) and pseudo-selectors (::before, ::after) in _cssCustom no longer encoded to &gt; — wp_kses_post() has been replaced with wp_strip_all_tags() for all CSS code keys, preserving full CSS syntax.
+* Fix: All underscore-prefixed Bricks style keys (_padding, _background, _typography, _border, _transform, _display, etc.) now use CSS-safe sanitization instead of sanitize_text_field(), preventing corruption of CSS units, CSS variables, and color values.
+* Fix: Breakpoint/pseudo composite keys (_padding:tablet_portrait, _background:hover, _typography:mobile_portrait:focus) now correctly identified as style keys and sanitized appropriately.
+* Fix: Background color in CSS import (import_classes_from_css) now stores correct Bricks color object format {"hex":"#value"} instead of a plain string — was silently broken and rendered nothing on frontend.
+* Fix: Text color (color CSS property) now imports into _typography.color as a color object instead of _color as a raw string.
+* Fix: Border width and radius values documented and handled as CSS unit strings ("4px", "50%", "var(--r)") not integers — matches actual Bricks internal storage format.
+* Fix: Breakpoint map in CSS importer corrected to Bricks 2.x keys: mobile → mobile_portrait, added mobile_landscape (478px/767px).
+* Fix: Schema cache replaced from transient-based to non-autoloaded wp_options — transients are wiped by WP Rocket, LiteSpeed Cache, and other performance plugins causing schema regeneration on every page load after a cache flush.
+* Fix: _maxWidth settings key auto-corrected to _widthMax (non-existent key was silently ignored by Bricks, styles never applied).
+* Fix: _textAlign settings key silently dropped with a log entry (non-existent — use _typography["text-align"] instead).
+* New: trigger_css_regeneration() method added to BricksService — fires Bricks CSS regeneration pipeline after programmatic saves, fixing "no styles on frontend" when External Files CSS loading method is active.
+* New: 20+ additional CSS properties now mapped in import_classes_from_css: display, flex-direction, align-items, justify-content, flex-grow, flex-shrink, gap, width, max-width, min-width, height, max-height, min-height, position, z-index, top, right, bottom, left, overflow, overflow-x, overflow-y, opacity.
+* New: SchemaGenerator color schema corrected — all color controls documented as Bricks color objects ({hex/raw/rgb}) not plain strings, with proper description and pattern validation.
+* New: Border control schema corrected — radius and width types changed from integer to string with CSS unit examples.
+* New: Typography schema extended with text-decoration, text-align, font-style enum values, and color field with correct color object schema.
+* Compatibility: Fully verified against Bricks Builder 2.3.1 on PHP 8.1+.
+
 = 1.4.0 =
 * New: Connection diagnostics system — 9 automated checks detect what's blocking MCP API endpoints or App Passwords.
 * New: Diagnostic panel on MCP Settings page replaces Test Connection button with richer output and fix instructions.
@@ -181,6 +200,9 @@ Yes, when configured correctly. The plugin enforces WordPress Application Passwo
 * Unsplash API integration for image search.
 
 == Upgrade Notice ==
+
+= 1.4.1 =
+Critical fix for visual styling — CSS sanitization overhaul ensures _cssCustom, colors, borders, and typography settings are stored correctly and render properly in the visual builder. Recommended for all users.
 
 = 1.3.0 =
 MCP initialize instructions, infobox template support, Bricks 2.3 builder settings and CSS gotcha corrections, color param aliases.

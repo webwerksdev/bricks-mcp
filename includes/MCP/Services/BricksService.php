@@ -180,6 +180,9 @@ class BricksService {
 
 		update_post_meta( $post_id, self::EDITOR_MODE_KEY, 'bricks' );
 
+		// Trigger CSS regeneration so frontend styles reflect new content.
+		$this->trigger_css_regeneration( $post_id );
+
 		// Verify write persisted — bypass cache, read raw from database.
 		wp_cache_delete( $post_id, 'post_meta' );
 		$stored = get_post_meta( $post_id, self::META_KEY, true );
@@ -289,6 +292,54 @@ class BricksService {
 				$wp_filter['update_post_metadata']->callbacks[ $entry['priority'] ][ $entry['id'] ] = $entry['callback'];
 			}
 			unset( $this->stored_filters['update_post_metadata_bricks'] );
+		}
+	}
+
+	/**
+	 * Recursively sanitize a styles array for global classes.
+	 *
+	 * Walks the nested styles structure and sanitizes all scalar values
+	 * using wp_strip_all_tags() to prevent stored XSS while preserving
+	 * CSS values (units, variables, color functions).
+	 *
+	 * @param array<string, mixed> $styles The styles array to sanitize.
+	 * @return array<string, mixed> Sanitized styles array.
+	 */
+	private function sanitize_styles_array( array $styles ): array {
+		$sanitized = [];
+		foreach ( $styles as $key => $value ) {
+			$safe_key = wp_strip_all_tags( (string) $key );
+			if ( is_array( $value ) ) {
+				$sanitized[ $safe_key ] = $this->sanitize_styles_array( $value );
+			} elseif ( is_string( $value ) ) {
+				$sanitized[ $safe_key ] = wp_strip_all_tags( $value );
+			} elseif ( is_int( $value ) || is_float( $value ) || is_bool( $value ) ) {
+				$sanitized[ $safe_key ] = $value;
+			}
+		}
+		return $sanitized;
+	}
+
+	/**
+	 * Trigger Bricks CSS regeneration for a post after programmatic save.
+	 * Needed when Bricks uses External Files CSS mode - API saves bypass the editor
+	 * pipeline that normally regenerates static CSS files.
+	 *
+	 * @param int $post_id The post ID.
+	 * @return void
+	 */
+	private function trigger_css_regeneration( int $post_id ): void {
+		if ( ! $this->is_bricks_active() ) {
+			return;
+		}
+		try {
+			do_action( 'bricks/save_post', $post_id );
+			if ( class_exists( '\Bricks\Assets' ) && method_exists( '\Bricks\Assets', 'generate_css_from_elements' ) ) {
+				$elements = $this->get_elements( $post_id );
+				\Bricks\Assets::generate_css_from_elements( $elements, $post_id );
+			}
+		} catch ( \Throwable $e ) {
+			error_log( 'BricksMCP: CSS regen failed for post ' . $post_id . ': ' . $e->getMessage() );
 		}
 	}
 
@@ -1237,30 +1288,6 @@ class BricksService {
 	}
 
 	/**
-	 * Recursively sanitize a styles array for global classes.
-	 *
-	 * Walks the nested styles structure and sanitizes all scalar values
-	 * to prevent stored XSS or injection via crafted style properties.
-	 *
-	 * @param array<string, mixed> $styles The styles array to sanitize.
-	 * @return array<string, mixed> Sanitized styles array.
-	 */
-	private function sanitize_styles_array( array $styles ): array {
-		$sanitized = [];
-		foreach ( $styles as $key => $value ) {
-			$safe_key = sanitize_text_field( (string) $key );
-			if ( is_array( $value ) ) {
-				$sanitized[ $safe_key ] = $this->sanitize_styles_array( $value );
-			} elseif ( is_string( $value ) ) {
-				$sanitized[ $safe_key ] = sanitize_text_field( $value );
-			} elseif ( is_int( $value ) || is_float( $value ) || is_bool( $value ) ) {
-				$sanitized[ $safe_key ] = $value;
-			}
-		}
-		return $sanitized;
-	}
-
-	/**
 	 * Soft-delete a global CSS class to trash.
 	 *
 	 * Moves the class from bricks_global_classes to bricks_global_classes_trash.
@@ -1876,17 +1903,17 @@ class BricksService {
 
 			// Background.
 			case 'background-color':
-				return [
-					'key'   => '_background',
-					'value' => [ 'color' => $value ],
-				];
+				// Bricks color format is always an object: {hex:'#value'} or {raw:'var(--x)'}
+				$color_val = ( str_starts_with( $value, 'var(' ) || str_starts_with( $value, 'rgba' ) || str_starts_with( $value, 'rgb(' ) || str_starts_with( $value, 'hsl' ) )
+					? [ 'raw' => $value ] : [ 'hex' => $value ];
+				return [ 'key' => '_background', 'value' => [ 'color' => $color_val ] ];
 
 			// Text color.
 			case 'color':
-				return [
-					'key'   => '_color',
-					'value' => $value,
-				];
+				// Bricks text color stored in _typography.color as an object
+				$tc_val = ( str_starts_with( $value, 'var(' ) || str_starts_with( $value, 'rgba' ) || str_starts_with( $value, 'rgb(' ) || str_starts_with( $value, 'hsl' ) )
+					? [ 'raw' => $value ] : [ 'hex' => $value ];
+				return [ 'key' => '_typography', 'value' => [ 'color' => $tc_val ] ];
 
 			// Typography.
 			case 'font-size':
@@ -1932,10 +1959,40 @@ class BricksService {
 
 			// Border radius.
 			case 'border-radius':
-				return [
-					'key'   => '_borderRadius',
-					'value' => $this->expand_spacing_shorthand( $value ),
-				];
+				return [ 'key' => '_borderRadius', 'value' => $this->expand_spacing_shorthand( $value ) ];
+
+			// Display.
+			case 'display': return [ 'key' => '_display', 'value' => $value ];
+
+			// Flex.
+			case 'flex-direction': return [ 'key' => '_direction', 'value' => $value ];
+			case 'align-items':    return [ 'key' => '_alignItems', 'value' => $value ];
+			case 'justify-content': return [ 'key' => '_justifyContent', 'value' => $value ];
+			case 'flex-grow':      return [ 'key' => '_flexGrow', 'value' => (int)$value ];
+			case 'flex-shrink':    return [ 'key' => '_flexShrink', 'value' => (int)$value ];
+			case 'gap':            return [ 'key' => '_gap', 'value' => $value ];
+
+			// Dimensions.
+			case 'width':      return [ 'key' => '_width', 'value' => $value ];
+			case 'max-width':  return [ 'key' => '_widthMax', 'value' => $value ];
+			case 'min-width':  return [ 'key' => '_widthMin', 'value' => $value ];
+			case 'height':     return [ 'key' => '_height', 'value' => $value ];
+			case 'max-height': return [ 'key' => '_heightMax', 'value' => $value ];
+			case 'min-height': return [ 'key' => '_heightMin', 'value' => $value ];
+
+			// Positioning.
+			case 'position': return [ 'key' => '_position', 'value' => $value ];
+			case 'z-index':  return [ 'key' => '_zIndex', 'value' => $value ];
+			case 'top':      return [ 'key' => '_top', 'value' => $value ];
+			case 'right':    return [ 'key' => '_right', 'value' => $value ];
+			case 'bottom':   return [ 'key' => '_bottom', 'value' => $value ];
+			case 'left':     return [ 'key' => '_left', 'value' => $value ];
+
+			// Overflow, opacity.
+			case 'overflow':   return [ 'key' => '_overflow', 'value' => $value ];
+			case 'overflow-x': return [ 'key' => '_overflowX', 'value' => $value ];
+			case 'overflow-y': return [ 'key' => '_overflowY', 'value' => $value ];
+			case 'opacity':    return [ 'key' => '_opacity', 'value' => $value ];
 
 			default:
 				return null;
@@ -2001,17 +2058,21 @@ class BricksService {
 	 * @return string Bricks breakpoint key, or empty string for unmatchable queries.
 	 */
 	private function resolve_media_query_to_breakpoint( string $query ): string {
+		// Bricks 2.x breakpoint keys (confirmed from Bricks\Breakpoints, v2.3.1):
+		// desktop (base, 1279px), tablet_portrait (991px), mobile_landscape (767px), mobile_portrait (478px)
 		$max_width_map = [
-			767  => 'mobile',
+			478  => 'mobile_portrait',
+			767  => 'mobile_landscape',
+			768  => 'mobile_landscape',
 			991  => 'tablet_portrait',
 			1023 => 'tablet_portrait',
-			1199 => 'tablet_landscape',
-			1279 => 'tablet_landscape',
+			1279 => 'desktop',
 		];
 
 		$min_width_map = [
+			479  => 'mobile_landscape',
 			768  => 'tablet_portrait',
-			1024 => 'tablet_landscape',
+			992  => 'desktop',
 		];
 
 		// Try max-width.
